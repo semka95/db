@@ -12,6 +12,12 @@
       "user": "user",
       "pass": "password",
       "name": "article"
+  },
+  "mongo": {
+    "name": "shortener",
+    "user": "admin",
+    "pwd": "password",
+    "port": "27017"
   }
 
 }

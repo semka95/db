@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/labstack/echo"
 	"github.com/sirupsen/logrus"
@@ -28,10 +27,10 @@ func NewURLHandler(e *echo.Echo, us url.Usecase) {
 	handler := &URLHandler{
 		URLUsecase: us,
 	}
-	e.POST("/*", handler.Store)
+	e.POST("/", handler.Store)
 	e.GET("/*", handler.GetByID)
 	e.DELETE("/*", handler.Delete)
-	e.PUT("/*", handler.Update)
+	// e.PUT("/*", handler.Update)
 }
 
 // GetByID will get url by given id
@@ -47,10 +46,10 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusOK, url)
+	return c.Redirect(http.StatusMovedPermanently, url.Link)
 }
 
-func isRequestValid(m *models.Article) (bool, error) {
+func isRequestValid(m *models.URL) (bool, error) {
 	validate := validator.New()
 	err := validate.Struct(m)
 	if err != nil {
@@ -67,7 +66,7 @@ func (u *URLHandler) Store(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
 
-	if ok, err := isRequestValid(&article); !ok {
+	if ok, err := isRequestValid(&url); !ok {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 	ctx := c.Request().Context()
@@ -75,27 +74,23 @@ func (u *URLHandler) Store(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	err = a.AUsecase.Store(ctx, &article)
+	err = u.URLUsecase.Store(ctx, &url)
 
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusCreated, article)
+	return c.JSON(http.StatusCreated, url)
 }
 
-// Delete will delete article by given param
-func (a *ArticleHandler) Delete(c echo.Context) error {
-	idP, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		return c.JSON(http.StatusNotFound, models.ErrNotFound.Error())
-	}
-	id := int64(idP)
+// Delete will delete URL by given id
+func (u *URLHandler) Delete(c echo.Context) error {
+	id := c.Path()
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	err = a.AUsecase.Delete(ctx, id)
+	err := u.URLUsecase.Delete(ctx, id)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
