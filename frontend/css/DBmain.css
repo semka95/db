@@ -4,6 +4,10 @@ body {
     margin: 0;
     font-size: 14px;
     color: #fff;
+    background: transparent linear-gradient(180deg, #98E7FF 0%, #63CCC6 66%, #69C08C 100%) 0% 0% no-repeat padding-box;
+    opacity: 1;
+    height:100%;
+    width:100%;
 }
 
 .logo {
@@ -29,19 +33,13 @@ body {
     
 }
 
-
 .header {
-    top: 0px;
-    left: 0px;
     margin: 0 auto;
-    background: transparent linear-gradient(180deg, #98E7FF 0%, #63CCC6 66%, #69C08C 100%) 0% 0% no-repeat padding-box;
-    opacity: 1;
-    padding-top: 62px;
+    padding-top: 50px;
 }
 
 .container {
     width: 1640px;
-    height: 931px;
     margin: 0 auto; /*Выравнивание по центру*/
 }
 
@@ -64,7 +62,7 @@ body {
     margin-left: 138px;
     margin-right: 138px;
     width: 1364px;
-    height: 545px;
+    height: 470px;
     text-align: center;
     letter-spacing: 0;
     color: #000000;
@@ -72,11 +70,11 @@ body {
 }
 
 .short {
-    font-size: 139px;
+    font-size: 120px;
     font-weight: 600;
-    height: 170px;
+    height: 160px;
     display: block;
-    padding-top: 149px;
+    padding-top: 100px;
     
 }
 
@@ -84,7 +82,7 @@ body {
     width: 1062px;
     padding-left: 138px;
     padding-right: 164px;
-    padding-top: 60px;
+    padding-top: 40px;
     justify-content: space-between;
     height: 50px;
     display: flex;
@@ -102,7 +100,7 @@ body {
 }
 
 .show {
-    width: 155px;
+    width: 160px;
     height: 25px;
     display: flex;
     align-items: center;
@@ -137,9 +135,8 @@ body {
 
 .main p {
     width: 690px;
-    margin-bottom: 60px;
     margin: 0 auto;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 400;
     text-align: center;
     color: #000;
@@ -171,6 +168,7 @@ body {
     box-shadow: 7px 7px 10px #50B97F;
     border-radius: 25px;
     opacity: 1;
+    text-align: center;
 }
 
 h3 {
@@ -210,24 +208,19 @@ h3 {
 }
 
 .footer {
-    margin-top: 56px;
-}
-
-.footer {
     display: flex;
     padding: 0px;
     margin-left: 140px;
     margin-right: 120px;
-    margin-top: 56px;
-    margin-bottom: 0px;
+    margin-top: 38px;
+    margin-bottom: 14px;
 }
 
 .footer p{
-    width: 700px;
-    text-align: right;
+    margin-left: auto;
     color: #000;
     font-size: 18px;
-    margin: 0px 0px 0px 30px;
+    margin: 0px 0px 0px auto;
 }
 
 .footer a:nth-child(1) {
@@ -267,59 +260,3 @@ h3 {
     font-size: 18px;
     text-decoration: none;
 }
-
-@media screen and (max-width: 1650px){
-    .nav {
-        width: 1100px;
-        margin: 0 auto;
-    }
-
-    .main {
-        width: auto;
-    }
-
-    .header {
-        width: auto;
-    }
-
-    .container {
-        width: auto;
-    }
-}
-
-@media screen and (max-width: 1520px){
-    .short{
-        font-size: 100px;
-        font-weight: 400;
-        height: 170px;
-    }
-
-    .make_link{
-        width: auto;
-    }
-    
-    .suppliment{
-        width: auto;
-        padding: 0px;
-        margin: 30px 100px;
-    }
-
-    .show {
-        width: 180px;
-        font-size: 20px;
-        border: 0px;
-        margin: 25px auto;
-    }
-
-}
-
-/*h1, h2, h3, h4, h5, h6 {
-    font-weight: 700;
-}*/
-/*h1 {
-    letter-spacing: 0.23em;
-    border-top: 3px solid #d0d9dd;
-    border-bottom: 3px solid #d0d9dd;
-    padding: 14px 0px;
-    margin: 0 auto;
-}*/

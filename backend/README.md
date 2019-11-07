@@ -1,9 +1,5 @@
-# go-clean-arch
-
-## Looking for the old code ? 
-If you are looking for the old code, you can checkout to the [v1 branch](https://github.com/bxcodec/go-clean-arch/tree/v1)
-
-_Last Updated: May 12th 2018_
+## Source:
+https://github.com/bxcodec/go-clean-arch/
 
 ## Description
 This is an example of implementation of Clean Architecture in Go (Golang) projects.
@@ -76,8 +72,3 @@ In this project, I use some tools listed below. But you can use any simmilar lib
 
 - All libraries listed in [`go.mod`](https://github.com/bxcodec/go-clean-arch/blob/master/go.mod) 
 - ["github.com/vektra/mockery".](https://github.com/vektra/mockery) To Generate Mocks for testing needs.
-
-
-### Change log 
- - 2018-04-30 : [Move to new projects folder](https://github.com/bxcodec/go-clean-arch/pull/8)
- - 2018-05-09 : [Add Context](https://github.com/bxcodec/go-clean-arch/pull/9)
