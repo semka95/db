@@ -3,7 +3,7 @@ package article
 import (
 	"context"
 
-	"github.com/bxcodec/go-clean-arch/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 )
 
 // Usecase represent the article's usecases

@@ -9,8 +9,8 @@ import (
 	"github.com/sirupsen/logrus"
 	validator "gopkg.in/go-playground/validator.v9"
 
-	"github.com/bxcodec/go-clean-arch/internal/models"
-	"github.com/bxcodec/go-clean-arch/internal/url"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
 
 // ResponseError represent the reseponse error struct

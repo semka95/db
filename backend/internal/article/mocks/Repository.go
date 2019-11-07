@@ -4,7 +4,7 @@ package mocks
 import (
 	context "context"
 
-	models "github.com/bxcodec/go-clean-arch/internal/models"
+	models "bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	mock "github.com/stretchr/testify/mock"
 )
 

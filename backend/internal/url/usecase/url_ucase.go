@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/bxcodec/go-clean-arch/internal/models"
-	"github.com/bxcodec/go-clean-arch/internal/url"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
 
 type urlUsecase struct {

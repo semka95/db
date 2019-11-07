@@ -9,8 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
-	"github.com/bxcodec/go-clean-arch/internal/models"
-	"github.com/bxcodec/go-clean-arch/internal/url"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
 
 type mongoURLRepository struct {

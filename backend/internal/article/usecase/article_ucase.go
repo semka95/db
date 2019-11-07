@@ -7,9 +7,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/bxcodec/go-clean-arch/internal/article"
-	"github.com/bxcodec/go-clean-arch/internal/author"
-	"github.com/bxcodec/go-clean-arch/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/article"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/author"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 )
 
 type articleUsecase struct {

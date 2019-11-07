@@ -3,7 +3,7 @@ package author
 import (
 	"context"
 
-	"github.com/bxcodec/go-clean-arch/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 )
 
 // Repository represent the author's repository contract
