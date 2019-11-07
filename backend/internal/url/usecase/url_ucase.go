@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -45,6 +47,17 @@ func (u *urlUsecase) Update(c context.Context, url *models.URL) error {
 func (u *urlUsecase) Store(c context.Context, m *models.URL) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
+	if m.ID == "" {
+		m.ID = createURLToken()
+		// refactor
+		for {
+			existedURL, _ := u.GetByID(ctx, m.ID)
+			if existedURL == nil {
+				break
+			}
+			m.ID = createURLToken()
+		}
+	}
 	existedURL, _ := u.GetByID(ctx, m.ID)
 	if existedURL != nil {
 		return models.ErrConflict
@@ -55,6 +68,12 @@ func (u *urlUsecase) Store(c context.Context, m *models.URL) error {
 		return err
 	}
 	return nil
+}
+
+func createURLToken() string {
+	buf := make([]byte, 4)
+	rand.Read(buf)
+	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(buf)
 }
 
 func (u *urlUsecase) Delete(c context.Context, id string) error {

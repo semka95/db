@@ -43,11 +43,11 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	art, err := u.URLUsecase.GetByID(ctx, id)
+	url, err := u.URLUsecase.GetByID(ctx, id)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusOK, art)
+	return c.JSON(http.StatusOK, url)
 }
 
 func isRequestValid(m *models.Article) (bool, error) {
@@ -59,10 +59,10 @@ func isRequestValid(m *models.Article) (bool, error) {
 	return true, nil
 }
 
-// Store will store the article by given request body
-func (a *ArticleHandler) Store(c echo.Context) error {
-	var article models.Article
-	err := c.Bind(&article)
+// Store will store the URL by given request body
+func (u *URLHandler) Store(c echo.Context) error {
+	var url models.URL
+	err := c.Bind(&url)
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err.Error())
 	}
