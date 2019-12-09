@@ -1,3 +1,4 @@
+db = db.getSiblingDB("shortener");
 db.createUser({
   user: "admin",
   pwd: "password",

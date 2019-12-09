@@ -1,0 +1,51 @@
+version: "2.3"
+services:
+  # backend api built with golang
+  backend:
+    image: shortener
+    container_name: shortener_management_api
+    ports:
+      - 9090:9090
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    links:
+      - mongodb
+    volumes:
+      - ./backend/config.json:/app/config.json
+
+  # mongodb is our primary data store
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
+      - MONGO_INITDB_DATABASE=shortener
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - 27017:27017
+    healthcheck:
+      test: echo 'db.stats().ok' | mongo localhost:27017/admin --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    command: mongod
+
+  # nginx is used for ssl termination
+  nginx:
+    image: nginx
+    ports:
+      - "443:443"
+    depends_on:
+      - frontend
+      - backend
+
+  # frontend
+  frontend:
+    image: frontend
+    volumes:
+      - ./frontend:/root
+    ports:
+      - "3000:3000"

@@ -27,7 +27,7 @@ func NewURLHandler(e *echo.Echo, us url.Usecase) {
 	handler := &URLHandler{
 		URLUsecase: us,
 	}
-	e.POST("/", handler.Store)
+	e.POST("/create", handler.Store)
 	e.GET("/*", handler.GetByID)
 	e.DELETE("/*", handler.Delete)
 	// e.PUT("/*", handler.Update)
@@ -35,7 +35,7 @@ func NewURLHandler(e *echo.Echo, us url.Usecase) {
 
 // GetByID will get url by given id
 func (u *URLHandler) GetByID(c echo.Context) error {
-	id := c.Path()
+	id := c.Request().URL.Path[5:] // fix this
 
 	ctx := c.Request().Context()
 	if ctx == nil {
