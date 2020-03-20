@@ -1,6 +1,6 @@
 module bitbucket.org/dbproject_ivt/db/backend
 
-go 1.13
+go 1.14
 
 require (
 	github.com/go-playground/universal-translator v0.17.0 // indirect
