@@ -48,19 +48,27 @@ func (u *urlUsecase) Store(c context.Context, m *models.URL) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 	if m.ID == "" {
-		m.ID = createURLToken()
+		id, err := createURLToken()
+		if err != nil {
+			return err
+		}
 		// refactor
 		for {
-			existedURL, _ := u.GetByID(ctx, m.ID)
+			existedURL, _ := u.GetByID(ctx, id)
 			if existedURL == nil {
 				break
 			}
-			m.ID = createURLToken()
+			id, err = createURLToken()
+			if err != nil {
+				return err
+			}
 		}
-	}
-	existedURL, _ := u.GetByID(ctx, m.ID)
-	if existedURL != nil {
-		return models.ErrConflict
+		m.ID = id
+	} else {
+		existedURL, _ := u.GetByID(ctx, m.ID)
+		if existedURL != nil {
+			return models.ErrConflict
+		}
 	}
 
 	err := u.urlRepo.Store(ctx, m)
@@ -70,10 +78,13 @@ func (u *urlUsecase) Store(c context.Context, m *models.URL) error {
 	return nil
 }
 
-func createURLToken() string {
+func createURLToken() (string, error) {
 	buf := make([]byte, 4)
-	rand.Read(buf)
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(buf)
+	_, err := rand.Read(buf)
+	if err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(buf), nil
 }
 
 func (u *urlUsecase) Delete(c context.Context, id string) error {

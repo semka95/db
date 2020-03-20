@@ -42,7 +42,7 @@ func main() {
 	dbPass := viper.GetString(`mongo.pwd`)
 	dbName := viper.GetString(`mongo.name`)
 	uri := fmt.Sprintf("mongodb://%s:%s@mongodb:%s", dbUser, dbPass, dbPort)
-	ctx, _ := context.WithTimeout(context.Background(), timeoutContext)
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
@@ -53,6 +53,7 @@ func main() {
 		if err = client.Disconnect(ctx); err != nil {
 			log.Fatal("Program exit: ", err)
 		}
+		cancel()
 	}()
 
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
