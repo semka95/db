@@ -8,6 +8,10 @@ engine:
 unittest:
 	go test -short  ./...
 
+test-coverage:
+	go test -short -coverprofile cover.out -covermode=atomic ./...
+	cat cover.out >> coverage.txt
+
 clean:
 	if [ -f ${BINARY} ] ; then rm ${BINARY} ; fi
 
@@ -33,4 +37,4 @@ lint:
 		--enable=unconvert \
 		./...
 
-.PHONY: test engine unittest clean docker run stop lint-prepare lint
+.PHONY: test engine unittest test-coverage clean docker run stop lint-prepare lint
