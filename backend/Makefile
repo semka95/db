@@ -33,4 +33,4 @@ lint:
 		--enable=unconvert \
 		./...
 
-.PHONY: clean install unittest build docker run stop vendor lint-prepare lint
+.PHONY: test engine unittest clean docker run stop lint-prepare lint
