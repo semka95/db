@@ -7,6 +7,8 @@ var (
 	ErrInternalServerError = errors.New("Internal Server Error")
 	// ErrNotFound will throw if the requested item is not exists
 	ErrNotFound = errors.New("Your requested Item is not found")
+	// ErrNoAffected will throw if no rows were affected
+	ErrNoAffected = errors.New("No rows were affected")
 	// ErrConflict will throw if the current action already exists
 	ErrConflict = errors.New("Your Item already exist")
 	// ErrBadParamInput will throw if the given request-body or params is not valid

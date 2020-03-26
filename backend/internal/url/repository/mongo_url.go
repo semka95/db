@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -87,7 +86,7 @@ func (m *mongoURLRepository) Store(ctx context.Context, url *models.URL) error {
 
 func (m *mongoURLRepository) Delete(ctx context.Context, id string) error {
 	filter := bson.D{
-		primitive.E{Key: "filter", Value: bson.D{primitive.E{Key: "_id", Value: id}}},
+		primitive.E{Key: "_id", Value: id},
 	}
 
 	delRes, err := m.Conn.Collection("url").DeleteOne(ctx, filter)
@@ -97,9 +96,8 @@ func (m *mongoURLRepository) Delete(ctx context.Context, id string) error {
 
 	rowsAfected := delRes.DeletedCount
 
-	if rowsAfected != 1 {
-		err = fmt.Errorf("Weird  Behaviour. Total Affected: %d", rowsAfected)
-		return err
+	if rowsAfected == 0 {
+		return models.ErrNoAffected
 	}
 
 	return nil
@@ -109,16 +107,30 @@ func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error 
 		primitive.E{Key: "_id", Value: url.ID},
 	}
 
-	updRes, err := m.Conn.Collection("url").UpdateOne(ctx, filter, url)
+	doc, err := toDoc(&url)
 	if err != nil {
-		return nil
+		return err
 	}
+	update := bson.D{primitive.E{Key: "$set", Value: doc}}
 
-	if updRes.ModifiedCount != 1 {
-		err = fmt.Errorf("Weird  Behaviour. Total Affected: %d", updRes.ModifiedCount)
-
+	updRes, err := m.Conn.Collection("url").UpdateOne(ctx, filter, update)
+	if err != nil {
 		return err
 	}
 
+	if updRes.ModifiedCount == 0 {
+		return models.ErrNoAffected
+	}
+
 	return nil
+}
+
+func toDoc(v interface{}) (doc *bson.D, err error) {
+	data, err := bson.Marshal(v)
+	if err != nil {
+		return
+	}
+
+	err = bson.Unmarshal(data, &doc)
+	return
 }
