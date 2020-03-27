@@ -22,6 +22,10 @@ type URLHandler struct {
 	URLUsecase url.Usecase
 }
 
+type createID struct {
+	ID string `json:"_id"`
+}
+
 // NewURLHandler will initialize the url/ resources endpoint
 func NewURLHandler(e *echo.Echo, us url.Usecase) {
 	handler := &URLHandler{
@@ -69,17 +73,18 @@ func (u *URLHandler) Store(c echo.Context) error {
 	if ok, err := isRequestValid(&url); !ok {
 		return c.JSON(http.StatusBadRequest, err.Error())
 	}
+
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	err = u.URLUsecase.Store(ctx, &url)
-
+	id, err := u.URLUsecase.Store(ctx, &url)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
-	return c.JSON(http.StatusCreated, url)
+
+	return c.JSON(http.StatusCreated, createID{ID: id})
 }
 
 // Delete will delete URL by given id
