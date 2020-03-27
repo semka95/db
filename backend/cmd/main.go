@@ -14,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
-	_URLHttpDeliver "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
+	_URLHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	_URLRepo "bitbucket.org/dbproject_ivt/db/backend/internal/url/repository"
 	_URLUcase "bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
 )
@@ -64,7 +64,7 @@ func main() {
 
 	ur := _URLRepo.NewMongoURLRepository(client, dbName)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
-	_URLHttpDeliver.NewURLHandler(e, uu)
+	_URLHttpDelivery.NewURLHandler(e, uu)
 
 	log.Fatal(e.Start(viper.GetString("server.address")))
 }

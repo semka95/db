@@ -24,7 +24,6 @@ func NewURLUsecase(u url.Repository, timeout time.Duration) url.Usecase {
 }
 
 func (u *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) {
-
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
@@ -37,45 +36,44 @@ func (u *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) 
 }
 
 func (u *urlUsecase) Update(c context.Context, url *models.URL) error {
-
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
 	return u.urlRepo.Update(ctx, url)
 }
 
-func (u *urlUsecase) Store(c context.Context, m *models.URL) error {
+func (u *urlUsecase) Store(c context.Context, m *models.URL) (string, error) {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 	if m.ID == "" {
 		id, err := createURLToken()
 		if err != nil {
-			return err
+			return "", err
 		}
 		// refactor
 		for {
-			existedURL, _ := u.GetByID(ctx, id)
-			if existedURL == nil {
+			_, err := u.GetByID(ctx, id)
+			if err != nil {
 				break
 			}
 			id, err = createURLToken()
 			if err != nil {
-				return err
+				return "", err
 			}
 		}
 		m.ID = id
 	} else {
-		existedURL, _ := u.GetByID(ctx, m.ID)
-		if existedURL != nil {
-			return models.ErrConflict
+		_, err := u.GetByID(ctx, m.ID)
+		if err == nil {
+			return "", models.ErrConflict
 		}
 	}
 
 	err := u.urlRepo.Store(ctx, m)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return m.ID, nil
 }
 
 func createURLToken() (string, error) {
@@ -90,12 +88,6 @@ func createURLToken() (string, error) {
 func (u *urlUsecase) Delete(c context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
-	existedURL, err := u.urlRepo.GetByID(ctx, id)
-	if err != nil {
-		return err
-	}
-	if existedURL == nil {
-		return models.ErrNotFound
-	}
+
 	return u.urlRepo.Delete(ctx, id)
 }
