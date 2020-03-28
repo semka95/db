@@ -3,10 +3,11 @@ package http
 import (
 	"context"
 	"net/http"
+	"regexp"
 
+	validator "github.com/go-playground/validator/v10"
 	"github.com/labstack/echo"
 	"github.com/sirupsen/logrus"
-	validator "gopkg.in/go-playground/validator.v9"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
@@ -31,15 +32,31 @@ func NewURLHandler(e *echo.Echo, us url.Usecase) {
 	handler := &URLHandler{
 		URLUsecase: us,
 	}
-	e.POST("/create", handler.Store)
-	e.GET("/*", handler.GetByID)
-	e.DELETE("/*", handler.Delete)
-	// e.PUT("/*", handler.Update)
+	e.POST("/url/create", handler.Store)
+	e.GET("/:id", handler.GetByID)
+	e.DELETE("/url/delete/:id", handler.Delete)
+	// e.PUT("/url/update/:id", handler.Update)
+}
+
+func checkURL(fl validator.FieldLevel) bool {
+	r := regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	return r.MatchString(fl.Field().String())
 }
 
 // GetByID will get url by given id
 func (u *URLHandler) GetByID(c echo.Context) error {
-	id := c.Request().URL.Path[5:] // fix this
+	id := c.Param("id")
+
+	validate := validator.New()
+	err := validate.RegisterValidation("linkid", checkURL)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ResponseError{Message: err.Error()})
+	}
+
+	err = validate.Var(id, "omitempty,linkid,min=7,max=20")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, ResponseError{Message: err.Error()})
+	}
 
 	ctx := c.Request().Context()
 	if ctx == nil {
@@ -55,7 +72,12 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 
 func isRequestValid(m *models.URL) (bool, error) {
 	validate := validator.New()
-	err := validate.Struct(m)
+	err := validate.RegisterValidation("linkid", checkURL)
+	if err != nil {
+		return false, err
+	}
+
+	err = validate.Struct(m)
 	if err != nil {
 		return false, err
 	}

@@ -13,16 +13,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestURLUsecase_GetByID(t *testing.T) {
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-
-	tURL := &models.URL{
+func newURL() *models.URL {
+	return &models.URL{
 		ID:             "test",
 		Link:           "http://www.example.org",
 		ExpirationDate: time.Now().Add(time.Hour),
 		CreatedAt:      time.Now(),
 	}
+}
+
+func TestURLUsecase_GetByID(t *testing.T) {
+	controller := gomock.NewController(t)
+	defer controller.Finish()
+
+	tURL := newURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
@@ -46,12 +50,7 @@ func TestURLUsecase_Store(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := &models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
+	tURL := newURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
@@ -106,12 +105,7 @@ func TestURLUsecase_Update(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := &models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
+	tURL := newURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
@@ -133,12 +127,7 @@ func TestURLUsecase_Delete(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := &models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
+	tURL := newURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
