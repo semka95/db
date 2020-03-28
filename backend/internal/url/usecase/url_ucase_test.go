@@ -61,7 +61,7 @@ func TestURLUsecase_Store(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
 		result, err := uc.Store(context.Background(), tURL)
 		assert.NoError(t, err)
-		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9]{6}$`), result)
+		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result)
 	})
 
 	t.Run("test store empty ID, generated existed token", func(t *testing.T) {
@@ -71,7 +71,7 @@ func TestURLUsecase_Store(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
 		result, err := uc.Store(context.Background(), tURL)
 		assert.NoError(t, err)
-		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9]{6}$`), result)
+		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result)
 	})
 
 	t.Run("test store filled ID", func(t *testing.T) {
@@ -84,7 +84,6 @@ func TestURLUsecase_Store(t *testing.T) {
 	})
 
 	t.Run("test store already existed ID", func(t *testing.T) {
-		tURL.ID = "test"
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(tURL, nil)
 		result, err := uc.Store(context.Background(), tURL)
 		assert.Error(t, err, models.ErrConflict)
@@ -92,7 +91,6 @@ func TestURLUsecase_Store(t *testing.T) {
 	})
 
 	t.Run("test store repository store error", func(t *testing.T) {
-		tURL.ID = "test"
 		repository.EXPECT().Store(gomock.Any(), tURL).Return(models.ErrInternalServerError)
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
 		result, err := uc.Store(context.Background(), tURL)
