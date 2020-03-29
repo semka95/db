@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"testing"
-	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/repository"
@@ -27,12 +26,7 @@ func TestMain(m *testing.M) {
 func TestMongoURLRepository_GetByID(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tURL := models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
+	tURL := models.NewURL()
 
 	mt.Run("test get record not exist", func(mt *mtest.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name())
@@ -48,41 +42,31 @@ func TestMongoURLRepository_GetByID(t *testing.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name())
 		result, err := repository.GetByID(mtest.Background, tURL.ID)
 		assert.NoError(mt, err)
-		assert.ObjectsAreEqual(tURL, result)
+		assert.EqualValues(t, tURL, result)
 	})
 }
 
 func TestMongoURLRepository_Store(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tURL := &models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
+	tURL := models.NewURL()
 
 	mt.RunOpts("test store record", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name())
 		err := repository.Store(mtest.Background, tURL)
 		assert.NoError(mt, err)
 
-		var result models.URL
-		err = mt.Coll.FindOne(mtest.Background, bson.D{primitive.E{Key: "_id", Value: tURL.ID}}).Decode(&result)
+		result := &models.URL{}
+		err = mt.Coll.FindOne(mtest.Background, bson.D{primitive.E{Key: "_id", Value: tURL.ID}}).Decode(result)
 		assert.NoError(mt, err)
-		assert.ObjectsAreEqual(tURL, result)
+		assert.EqualValues(t, tURL, result)
 	})
 }
 
 func TestMongoURLRepository_Delete(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tURL := models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
+	tURL := models.NewURL()
 
 	mt.RunOpts("test delete not existing record", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name())
@@ -103,12 +87,7 @@ func TestMongoURLRepository_Delete(t *testing.T) {
 func TestMongoURLRepository_Update(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tURL := &models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
+	tURL := models.NewURL()
 
 	mt.RunOpts("test update not existing record", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name())
@@ -125,9 +104,9 @@ func TestMongoURLRepository_Update(t *testing.T) {
 		err = repository.Update(mtest.Background, tURL)
 		assert.NoError(mt, err)
 
-		var result models.URL
-		err = mt.Coll.FindOne(mtest.Background, bson.D{primitive.E{Key: "_id", Value: tURL.ID}}).Decode(&result)
+		result := &models.URL{}
+		err = mt.Coll.FindOne(mtest.Background, bson.D{primitive.E{Key: "_id", Value: tURL.ID}}).Decode(result)
 		assert.NoError(mt, err)
-		assert.ObjectsAreEqual(tURL, result)
+		assert.EqualValues(t, tURL, result)
 	})
 }

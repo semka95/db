@@ -13,20 +13,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newURL() *models.URL {
-	return &models.URL{
-		ID:             "test",
-		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour),
-		CreatedAt:      time.Now(),
-	}
-}
-
 func TestURLUsecase_GetByID(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := newURL()
+	tURL := models.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
@@ -42,7 +33,7 @@ func TestURLUsecase_GetByID(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 		result, err := uc.GetByID(context.Background(), tURL.ID)
 		assert.NoError(t, err)
-		assert.ObjectsAreEqual(tURL, result)
+		assert.EqualValues(t, tURL, result)
 	})
 }
 
@@ -50,7 +41,7 @@ func TestURLUsecase_Store(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := newURL()
+	tURL := models.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
@@ -103,7 +94,7 @@ func TestURLUsecase_Update(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := newURL()
+	tURL := models.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
@@ -125,7 +116,7 @@ func TestURLUsecase_Delete(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := newURL()
+	tURL := models.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)

@@ -23,7 +23,8 @@ type URLHandler struct {
 	URLUsecase url.Usecase
 }
 
-type createID struct {
+// CreateID represent the response struct
+type CreateID struct {
 	ID string `json:"_id"`
 }
 
@@ -35,7 +36,7 @@ func NewURLHandler(e *echo.Echo, us url.Usecase) {
 	e.POST("/url/create", handler.Store)
 	e.GET("/:id", handler.GetByID)
 	e.DELETE("/url/delete/:id", handler.Delete)
-	// e.PUT("/url/update/:id", handler.Update)
+	e.PUT("/url/update/:id", handler.Update)
 }
 
 func checkURL(fl validator.FieldLevel) bool {
@@ -50,7 +51,7 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 	validate := validator.New()
 	err := validate.RegisterValidation("linkid", checkURL)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ResponseError{Message: err.Error()})
+		return c.JSON(http.StatusInternalServerError, nil)
 	}
 
 	err = validate.Var(id, "omitempty,linkid,min=7,max=20")
@@ -87,13 +88,12 @@ func isRequestValid(m *models.URL) (bool, error) {
 // Store will store the URL by given request body
 func (u *URLHandler) Store(c echo.Context) error {
 	var url models.URL
-	err := c.Bind(&url)
-	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, err.Error())
+	if err := c.Bind(&url); err != nil {
+		return c.JSON(http.StatusBadRequest, err)
 	}
 
 	if ok, err := isRequestValid(&url); !ok {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, ResponseError{Message: err.Error()})
 	}
 
 	ctx := c.Request().Context()
@@ -106,23 +106,57 @@ func (u *URLHandler) Store(c echo.Context) error {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, createID{ID: id})
+	return c.JSON(http.StatusCreated, CreateID{ID: id})
 }
 
 // Delete will delete URL by given id
 func (u *URLHandler) Delete(c echo.Context) error {
-	id := c.Path()
+	id := c.Param("id")
+
+	validate := validator.New()
+	err := validate.RegisterValidation("linkid", checkURL)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ResponseError{Message: err.Error()})
+	}
+
+	err = validate.Var(id, "omitempty,linkid,min=7,max=20")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, ResponseError{Message: err.Error()})
+	}
+
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	err := u.URLUsecase.Delete(ctx, id)
-	if err != nil {
+	if err = u.URLUsecase.Delete(ctx, id); err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
-	return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, nil)
+}
+
+// Update will update the URL by given request body
+func (u *URLHandler) Update(c echo.Context) error {
+	var url models.URL
+	if err := c.Bind(&url); err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	if ok, err := isRequestValid(&url); !ok {
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if err := u.URLUsecase.Update(ctx, &url); err != nil {
+		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, url)
 }
 
 func getStatusCode(err error) int {
@@ -137,6 +171,8 @@ func getStatusCode(err error) int {
 		return http.StatusNotFound
 	case models.ErrConflict:
 		return http.StatusConflict
+	case models.ErrNoAffected:
+		return http.StatusNotFound
 	default:
 		return http.StatusInternalServerError
 	}

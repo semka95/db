@@ -27,12 +27,7 @@ func (u *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) 
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
-	res, err := u.urlRepo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return u.urlRepo.GetByID(ctx, id)
 }
 
 func (u *urlUsecase) Update(c context.Context, url *models.URL) error {

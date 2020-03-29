@@ -55,9 +55,10 @@ func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]
 	return result, nil
 }
 
-func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (res *models.URL, err error) {
+func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (*models.URL, error) {
 	command := bson.D{
 		primitive.E{Key: "find", Value: "url"},
+		primitive.E{Key: "limit", Value: 1},
 		primitive.E{Key: "filter", Value: bson.D{primitive.E{Key: "_id", Value: id}}},
 	}
 
@@ -66,13 +67,11 @@ func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (res *model
 		return nil, err
 	}
 
-	if len(list) > 0 {
-		res = list[0]
-	} else {
+	if len(list) == 0 {
 		return nil, models.ErrNotFound
 	}
 
-	return
+	return list[0], nil
 }
 
 func (m *mongoURLRepository) Store(ctx context.Context, url *models.URL) error {
@@ -94,9 +93,7 @@ func (m *mongoURLRepository) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	rowsAfected := delRes.DeletedCount
-
-	if rowsAfected == 0 {
+	if delRes.DeletedCount == 0 {
 		return models.ErrNoAffected
 	}
 
