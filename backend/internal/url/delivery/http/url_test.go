@@ -11,7 +11,7 @@ import (
 	urlHttp "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
 	"github.com/golang/mock/gomock"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,19 +25,18 @@ func TestURLHttp_GetByID(t *testing.T) {
 	t.Run("test get success", func(t *testing.T) {
 		uc.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 		e := echo.New()
-		req, err := http.NewRequest(echo.GET, "/"+tURL.ID, nil)
-		assert.NoError(t, err)
+		req := httptest.NewRequest(echo.GET, "/"+tURL.ID, nil)
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/:id" + tURL.ID)
+		c.SetPath("/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
 		}
 
-		err = handler.GetByID(c)
+		err := handler.GetByID(c)
 		assert.NoError(t, err)
 		assert.Equal(t, tURL.Link, rec.Header().Get("Location"))
 		assert.Equal(t, http.StatusMovedPermanently, rec.Code)
@@ -51,7 +50,7 @@ func TestURLHttp_GetByID(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/:id" + tURL.ID)
+		c.SetPath("/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
 		handler := urlHttp.URLHandler{
@@ -89,7 +88,7 @@ func TestURLHttp_Store(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/url/create" + tURL.ID)
+		c.SetPath("/url/create")
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
 		}
@@ -114,7 +113,7 @@ func TestURLHttp_Store(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/url/create" + tURL.ID)
+		c.SetPath("/url/create")
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
 		}
@@ -125,7 +124,7 @@ func TestURLHttp_Store(t *testing.T) {
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
 		assert.NoError(t, err)
-		assert.Equal(t, "Request body can't be empty", body.Message)
+		assert.Equal(t, models.ErrBadParamInput.Error(), body.Message)
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -142,7 +141,7 @@ func TestURLHttp_Store(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/url/create" + tURL.ID)
+		c.SetPath("/url/create")
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
 		}
@@ -174,7 +173,7 @@ func TestURLHttp_Delete(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/delete/:id" + tURL.ID)
+		c.SetPath("/delete/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
 		handler := urlHttp.URLHandler{
@@ -194,7 +193,7 @@ func TestURLHttp_Delete(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/delete/:id" + tURL.ID)
+		c.SetPath("/delete/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
 		handler := urlHttp.URLHandler{
@@ -233,7 +232,7 @@ func TestURLHttp_Update(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/url/update/:id" + tURL.ID)
+		c.SetPath("/url/update/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
 		handler := urlHttp.URLHandler{
@@ -260,7 +259,7 @@ func TestURLHttp_Update(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/url/update/:id" + tURL.ID)
+		c.SetPath("/url/update/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
 		handler := urlHttp.URLHandler{
@@ -273,7 +272,7 @@ func TestURLHttp_Update(t *testing.T) {
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
 		assert.NoError(t, err)
-		assert.Equal(t, "Request body can't be empty", body.Message)
+		assert.Equal(t, models.ErrBadParamInput.Error(), body.Message)
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -291,7 +290,7 @@ func TestURLHttp_Update(t *testing.T) {
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.SetPath("/url/update/:id" + tURL.ID)
+		c.SetPath("/url/update/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
 		handler := urlHttp.URLHandler{

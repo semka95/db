@@ -6,7 +6,7 @@ import (
 	"regexp"
 
 	validator "github.com/go-playground/validator/v10"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -87,13 +87,14 @@ func isRequestValid(m *models.URL) (bool, error) {
 
 // Store will store the URL by given request body
 func (u *URLHandler) Store(c echo.Context) error {
-	var url models.URL
-	if err := c.Bind(&url); err != nil {
+	url := new(models.URL)
+	if err := c.Bind(url); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if ok, err := isRequestValid(&url); !ok {
-		return c.JSON(http.StatusBadRequest, ResponseError{Message: err.Error()})
+	// TODO: later create full output of errors
+	if ok, _ := isRequestValid(url); !ok {
+		return c.JSON(http.StatusBadRequest, ResponseError{Message: models.ErrBadParamInput.Error()})
 	}
 
 	ctx := c.Request().Context()
@@ -101,7 +102,7 @@ func (u *URLHandler) Store(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	id, err := u.URLUsecase.Store(ctx, &url)
+	id, err := u.URLUsecase.Store(ctx, url)
 	if err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
@@ -138,13 +139,13 @@ func (u *URLHandler) Delete(c echo.Context) error {
 
 // Update will update the URL by given request body
 func (u *URLHandler) Update(c echo.Context) error {
-	var url models.URL
-	if err := c.Bind(&url); err != nil {
+	url := new(models.URL)
+	if err := c.Bind(url); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if ok, err := isRequestValid(&url); !ok {
-		return c.JSON(http.StatusBadRequest, err.Error())
+	if ok, _ := isRequestValid(url); !ok {
+		return c.JSON(http.StatusBadRequest, ResponseError{Message: models.ErrBadParamInput.Error()})
 	}
 
 	ctx := c.Request().Context()
@@ -152,7 +153,7 @@ func (u *URLHandler) Update(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	if err := u.URLUsecase.Update(ctx, &url); err != nil {
+	if err := u.URLUsecase.Update(ctx, url); err != nil {
 		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
@@ -173,6 +174,8 @@ func getStatusCode(err error) int {
 		return http.StatusConflict
 	case models.ErrNoAffected:
 		return http.StatusNotFound
+	case models.ErrBadParamInput:
+		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}
