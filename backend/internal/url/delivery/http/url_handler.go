@@ -5,7 +5,10 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
+	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
 	"github.com/sirupsen/logrus"
 
@@ -21,6 +24,14 @@ type ResponseError struct {
 // URLHandler represent the httphandler for url
 type URLHandler struct {
 	URLUsecase url.Usecase
+	Validator  *URLValidator
+}
+
+// URLValidator represent validation struct for url
+type URLValidator struct {
+	Uni   *ut.UniversalTranslator
+	V     *validator.Validate
+	Trans ut.Translator
 }
 
 // CreateID represent the response struct
@@ -29,14 +40,63 @@ type CreateID struct {
 }
 
 // NewURLHandler will initialize the url/ resources endpoint
-func NewURLHandler(e *echo.Echo, us url.Usecase) {
+func NewURLHandler(e *echo.Echo, us url.Usecase) error {
 	handler := &URLHandler{
 		URLUsecase: us,
+		Validator:  new(URLValidator),
 	}
+
+	err := handler.InitValidation()
+	if err != nil {
+		return err
+	}
+	e.Validator = handler.Validator
+
 	e.POST("/url/create", handler.Store)
 	e.GET("/:id", handler.GetByID)
 	e.DELETE("/url/delete/:id", handler.Delete)
 	e.PUT("/url/update/:id", handler.Update)
+
+	return nil
+}
+
+// Validate serving to be called by Echo to validate url
+func (uv *URLValidator) Validate(i interface{}) error {
+	return uv.V.Struct(i)
+}
+
+// InitValidation will initialize validation for url handler
+func (u *URLHandler) InitValidation() error {
+	en := en.New()
+	u.Validator.Uni = ut.New(en, en)
+	var found bool
+	u.Validator.Trans, found = u.Validator.Uni.GetTranslator("en")
+	if !found {
+		u.Validator.Trans = u.Validator.Uni.GetFallback()
+	}
+
+	u.Validator.V = validator.New()
+	err := u.Validator.V.RegisterValidation("linkid", checkURL)
+	if err != nil {
+		return err
+	}
+
+	err = u.Validator.V.RegisterTranslation("linkid", u.Validator.Trans, func(ut ut.Translator) error {
+		return ut.Add("linkid", "{0} must contain only a-z, A-Z, 0-9, _, - characters", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		t, _ := ut.T("linkid", fe.Field())
+		return t
+	})
+	if err != nil {
+		return err
+	}
+
+	err = en_translations.RegisterDefaultTranslations(u.Validator.V, u.Validator.Trans)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func checkURL(fl validator.FieldLevel) bool {
@@ -48,15 +108,10 @@ func checkURL(fl validator.FieldLevel) bool {
 func (u *URLHandler) GetByID(c echo.Context) error {
 	id := c.Param("id")
 
-	validate := validator.New()
-	err := validate.RegisterValidation("linkid", checkURL)
+	err := u.Validator.V.Var(id, "omitempty,linkid,min=7,max=20")
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, nil)
-	}
-
-	err = validate.Var(id, "omitempty,linkid,min=7,max=20")
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, ResponseError{Message: err.Error()})
+		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, res)
 	}
 
 	ctx := c.Request().Context()
@@ -71,20 +126,6 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 	return c.Redirect(http.StatusMovedPermanently, url.Link)
 }
 
-func isRequestValid(m *models.URL) (bool, error) {
-	validate := validator.New()
-	err := validate.RegisterValidation("linkid", checkURL)
-	if err != nil {
-		return false, err
-	}
-
-	err = validate.Struct(m)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 // Store will store the URL by given request body
 func (u *URLHandler) Store(c echo.Context) error {
 	url := new(models.URL)
@@ -92,9 +133,9 @@ func (u *URLHandler) Store(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	// TODO: later create full output of errors
-	if ok, _ := isRequestValid(url); !ok {
-		return c.JSON(http.StatusBadRequest, ResponseError{Message: models.ErrBadParamInput.Error()})
+	if err := c.Validate(url); err != nil {
+		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, res)
 	}
 
 	ctx := c.Request().Context()
@@ -114,15 +155,10 @@ func (u *URLHandler) Store(c echo.Context) error {
 func (u *URLHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
 
-	validate := validator.New()
-	err := validate.RegisterValidation("linkid", checkURL)
+	err := u.Validator.V.Var(id, "omitempty,linkid,min=7,max=20")
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ResponseError{Message: err.Error()})
-	}
-
-	err = validate.Var(id, "omitempty,linkid,min=7,max=20")
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, ResponseError{Message: err.Error()})
+		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, res)
 	}
 
 	ctx := c.Request().Context()
@@ -144,8 +180,9 @@ func (u *URLHandler) Update(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if ok, _ := isRequestValid(url); !ok {
-		return c.JSON(http.StatusBadRequest, ResponseError{Message: models.ErrBadParamInput.Error()})
+	if err := c.Validate(url); err != nil {
+		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, res)
 	}
 
 	ctx := c.Request().Context()
@@ -174,8 +211,6 @@ func getStatusCode(err error) int {
 		return http.StatusConflict
 	case models.ErrNoAffected:
 		return http.StatusNotFound
-	case models.ErrBadParamInput:
-		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}

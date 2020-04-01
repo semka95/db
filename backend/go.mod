@@ -4,10 +4,12 @@ go 1.14
 
 require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/go-playground/locales v0.13.0
+	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/golang/mock v1.4.3
 	github.com/klauspost/compress v1.10.3 // indirect
-	github.com/labstack/echo/v4 v4.1.13
+	github.com/labstack/echo/v4 v4.1.16
 	github.com/mitchellh/mapstructure v1.2.2 // indirect
 	github.com/pelletier/go-toml v1.6.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

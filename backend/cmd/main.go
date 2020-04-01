@@ -64,7 +64,10 @@ func main() {
 
 	ur := _URLRepo.NewMongoURLRepository(client, dbName)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
-	_URLHttpDelivery.NewURLHandler(e, uu)
+	err = _URLHttpDelivery.NewURLHandler(e, uu)
+	if err != nil {
+		log.Fatal("URL handler creation failed: ", err)
+	}
 
 	log.Fatal(e.Start(viper.GetString("server.address")))
 }
