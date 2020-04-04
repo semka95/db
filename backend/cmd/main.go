@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
 	_URLHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
@@ -32,10 +33,6 @@ func init() {
 }
 
 func main() {
-	e := echo.New()
-	middL := middleware.InitMiddleware()
-	e.Use(middL.CORS)
-
 	timeoutContext := time.Duration(viper.GetInt("context.timeout")) * time.Second
 	dbPort := viper.GetString(`mongo.port`)
 	dbUser := viper.GetString(`mongo.user`)
@@ -43,6 +40,22 @@ func main() {
 	dbName := viper.GetString(`mongo.name`)
 	uri := fmt.Sprintf("mongodb://%s:%s@mongodb:%s", dbUser, dbPass, dbPort)
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
+
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatal("Can't create logger: ", err)
+	}
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			log.Println("Can't close logger: ", err)
+		}
+	}()
+
+	e := echo.New()
+	middL := middleware.InitMiddleware(logger)
+	e.Use(middL.CORS)
+	e.Use(middL.Logger)
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {

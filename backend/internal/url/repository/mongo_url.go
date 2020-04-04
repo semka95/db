@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"log"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -24,14 +26,13 @@ func NewMongoURLRepository(c *mongo.Client, db string) url.Repository {
 func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]*models.URL, error) {
 	cur, err := m.Conn.RunCommandCursor(ctx, command)
 	if err != nil {
-		logrus.Error(err)
-		return nil, err
+		return nil, fmt.Errorf("Can't execute command: %w", err)
 	}
 
 	defer func(ctx context.Context) {
 		err := cur.Close(ctx)
 		if err != nil {
-			logrus.Error(err)
+			log.Println("Cursor was not closed: ", err)
 		}
 	}(ctx)
 
@@ -40,16 +41,14 @@ func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]
 	for cur.Next(ctx) {
 		elem := new(models.URL)
 		if err := cur.Decode(elem); err != nil {
-			logrus.Error(err)
-			return nil, err
+			return nil, fmt.Errorf("Can't unmarshal document into URL: %w", err)
 		}
 
 		result = append(result, elem)
 	}
 
 	if err = cur.Err(); err != nil {
-		logrus.Error(err)
-		return nil, err
+		return nil, fmt.Errorf("URL cursor error: %w", err)
 	}
 
 	return result, nil
@@ -64,11 +63,11 @@ func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (*models.UR
 
 	list, err := m.fetch(ctx, command)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("URL get error: %w: %s", models.ErrInternalServerError, err.Error())
 	}
 
 	if len(list) == 0 {
-		return nil, models.ErrNotFound
+		return nil, fmt.Errorf("URL was not found: %w", models.ErrNotFound)
 	}
 
 	return list[0], nil
@@ -77,7 +76,7 @@ func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (*models.UR
 func (m *mongoURLRepository) Store(ctx context.Context, url *models.URL) error {
 	_, err := m.Conn.Collection("url").InsertOne(ctx, url)
 	if err != nil {
-		return err
+		return fmt.Errorf("URL store error: %w: %s", models.ErrInternalServerError, err.Error())
 	}
 
 	return nil
@@ -90,11 +89,11 @@ func (m *mongoURLRepository) Delete(ctx context.Context, id string) error {
 
 	delRes, err := m.Conn.Collection("url").DeleteOne(ctx, filter)
 	if err != nil {
-		return err
+		return fmt.Errorf("URL delete error: %w: %s", models.ErrInternalServerError, err.Error())
 	}
 
 	if delRes.DeletedCount == 0 {
-		return models.ErrNoAffected
+		return fmt.Errorf("URL was not deleted: %w", models.ErrNoAffected)
 	}
 
 	return nil
@@ -106,17 +105,17 @@ func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error 
 
 	doc, err := toDoc(&url)
 	if err != nil {
-		return err
+		return fmt.Errorf("Can't convert URL to bson.D: %w, %s", models.ErrInternalServerError, err.Error())
 	}
 	update := bson.D{primitive.E{Key: "$set", Value: doc}}
 
 	updRes, err := m.Conn.Collection("url").UpdateOne(ctx, filter, update)
 	if err != nil {
-		return err
+		return fmt.Errorf("URL update error: %w: %s", models.ErrInternalServerError, err.Error())
 	}
 
 	if updRes.ModifiedCount == 0 {
-		return models.ErrNoAffected
+		return fmt.Errorf("URL was not updated: %w", models.ErrNoAffected)
 	}
 
 	return nil

@@ -11,6 +11,7 @@ import (
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestURLUsecase_GetByID(t *testing.T) {
@@ -32,7 +33,7 @@ func TestURLUsecase_GetByID(t *testing.T) {
 	t.Run("test get existed record", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 		result, err := uc.GetByID(context.Background(), tURL.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.EqualValues(t, tURL, result)
 	})
 }
@@ -51,7 +52,7 @@ func TestURLUsecase_Store(t *testing.T) {
 		repository.EXPECT().Store(gomock.Any(), tURL).Return(nil)
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
 		result, err := uc.Store(context.Background(), tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result)
 	})
 
@@ -61,7 +62,7 @@ func TestURLUsecase_Store(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(tURL, nil).Times(1)
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
 		result, err := uc.Store(context.Background(), tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result)
 	})
 
@@ -70,7 +71,7 @@ func TestURLUsecase_Store(t *testing.T) {
 		repository.EXPECT().Store(gomock.Any(), tURL).Return(nil)
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
 		result, err := uc.Store(context.Background(), tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, tURL.ID, result)
 	})
 
@@ -102,7 +103,7 @@ func TestURLUsecase_Update(t *testing.T) {
 	t.Run("test update existed record", func(t *testing.T) {
 		repository.EXPECT().Update(gomock.Any(), tURL).Return(nil)
 		err := uc.Update(context.Background(), tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("test update not existed record", func(t *testing.T) {
@@ -124,7 +125,7 @@ func TestURLUsecase_Delete(t *testing.T) {
 	t.Run("test delete existed record", func(t *testing.T) {
 		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(nil)
 		err := uc.Delete(context.Background(), tURL.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("test delete not existed record", func(t *testing.T) {

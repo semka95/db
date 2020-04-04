@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -43,7 +44,7 @@ func (u *urlUsecase) Store(c context.Context, m *models.URL) (string, error) {
 	if m.ID == "" {
 		id, err := createURLToken()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("Can't create URL id token: %w", models.ErrInternalServerError)
 		}
 		// refactor
 		for {
@@ -53,14 +54,14 @@ func (u *urlUsecase) Store(c context.Context, m *models.URL) (string, error) {
 			}
 			id, err = createURLToken()
 			if err != nil {
-				return "", err
+				return "", fmt.Errorf("Can't create URL id token: %w", models.ErrInternalServerError)
 			}
 		}
 		m.ID = id
 	} else {
 		_, err := u.GetByID(ctx, m.ID)
 		if err == nil {
-			return "", models.ErrConflict
+			return "", fmt.Errorf("Can't store URL, already exists: %w", models.ErrConflict)
 		}
 	}
 
@@ -68,6 +69,7 @@ func (u *urlUsecase) Store(c context.Context, m *models.URL) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return m.ID, nil
 }
 
@@ -77,6 +79,7 @@ func createURLToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(buf), nil
 }
 

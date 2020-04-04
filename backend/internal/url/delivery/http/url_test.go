@@ -14,6 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestURLHttp_GetByID(t *testing.T) {
@@ -39,10 +40,10 @@ func TestURLHttp_GetByID(t *testing.T) {
 			Validator:  new(urlHttp.URLValidator),
 		}
 		err := handler.InitValidation()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.GetByID(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, tURL.Link, rec.Header().Get("Location"))
 		assert.Equal(t, http.StatusMovedPermanently, rec.Code)
 	})
@@ -51,7 +52,7 @@ func TestURLHttp_GetByID(t *testing.T) {
 		uc.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, models.ErrNotFound)
 		e := echo.New()
 		req, err := http.NewRequest(echo.GET, "/"+tURL.ID, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -64,14 +65,14 @@ func TestURLHttp_GetByID(t *testing.T) {
 			Validator:  new(urlHttp.URLValidator),
 		}
 		err = handler.InitValidation()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.GetByID(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, models.ErrNotFound.Error(), body.Message)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -81,7 +82,7 @@ func TestURLHttp_GetByID(t *testing.T) {
 		e := echo.New()
 		tURL.ID = "te!t"
 		req, err := http.NewRequest(echo.GET, "/"+tURL.ID, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -94,14 +95,14 @@ func TestURLHttp_GetByID(t *testing.T) {
 			Validator:  new(urlHttp.URLValidator),
 		}
 		err = handler.InitValidation()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.GetByID(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body map[string]string
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body[""])
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -119,9 +120,9 @@ func TestURLHttp_Store(t *testing.T) {
 		e := echo.New()
 
 		b, err := json.Marshal(tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		req, err := http.NewRequest(echo.POST, "/url/create", bytes.NewBuffer(b))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 
 		rec := httptest.NewRecorder()
@@ -134,14 +135,14 @@ func TestURLHttp_Store(t *testing.T) {
 		}
 		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Store(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body urlHttp.CreateID
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, tURL.ID, body.ID)
 
 		assert.Equal(t, http.StatusCreated, rec.Code)
@@ -152,10 +153,10 @@ func TestURLHttp_Store(t *testing.T) {
 		e := echo.New()
 
 		b, err := json.Marshal(tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		req, err := http.NewRequest(echo.POST, "/url/create", bytes.NewBuffer(b))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 
 		rec := httptest.NewRecorder()
@@ -168,14 +169,14 @@ func TestURLHttp_Store(t *testing.T) {
 		}
 		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Store(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Error(t, models.ErrConflict, body.Message)
 
 		assert.Equal(t, http.StatusConflict, rec.Code)
@@ -186,10 +187,10 @@ func TestURLHttp_Store(t *testing.T) {
 
 		tURL.ID = "test!"
 		b, err := json.Marshal(tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		req, err := http.NewRequest(echo.POST, "/url/create", bytes.NewBuffer(b))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 
 		rec := httptest.NewRecorder()
@@ -202,14 +203,14 @@ func TestURLHttp_Store(t *testing.T) {
 		}
 		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Store(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body map[string]string
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "ID must contain only a-z, A-Z, 0-9, _, - characters", body["URL.ID"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -227,7 +228,7 @@ func TestURLHttp_Delete(t *testing.T) {
 		uc.EXPECT().Delete(gomock.Any(), tURL.ID).Return(nil)
 		e := echo.New()
 		req, err := http.NewRequest(echo.DELETE, "/delete/"+tURL.ID, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -240,10 +241,10 @@ func TestURLHttp_Delete(t *testing.T) {
 			Validator:  new(urlHttp.URLValidator),
 		}
 		err = handler.InitValidation()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Delete(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 
@@ -251,7 +252,7 @@ func TestURLHttp_Delete(t *testing.T) {
 		uc.EXPECT().Delete(gomock.Any(), tURL.ID).Return(models.ErrNoAffected)
 		e := echo.New()
 		req, err := http.NewRequest(echo.DELETE, "/delete/"+tURL.ID, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -264,14 +265,14 @@ func TestURLHttp_Delete(t *testing.T) {
 			Validator:  new(urlHttp.URLValidator),
 		}
 		err = handler.InitValidation()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Delete(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Error(t, models.ErrNoAffected, body.Message)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -282,7 +283,7 @@ func TestURLHttp_Delete(t *testing.T) {
 
 		tURL.ID = "te!t"
 		req, err := http.NewRequest(echo.DELETE, "/"+tURL.ID, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -295,14 +296,14 @@ func TestURLHttp_Delete(t *testing.T) {
 			Validator:  new(urlHttp.URLValidator),
 		}
 		err = handler.InitValidation()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Delete(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body map[string]string
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body[""])
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -320,10 +321,10 @@ func TestURLHttp_Update(t *testing.T) {
 		e := echo.New()
 
 		b, err := json.Marshal(tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		req, err := http.NewRequest(echo.PUT, "/url/update/"+tURL.ID, bytes.NewBuffer(b))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 
 		rec := httptest.NewRecorder()
@@ -338,14 +339,14 @@ func TestURLHttp_Update(t *testing.T) {
 		}
 		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Update(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		body := &models.URL{}
 		err = json.NewDecoder(rec.Body).Decode(body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.EqualValues(t, tURL, body)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -356,10 +357,10 @@ func TestURLHttp_Update(t *testing.T) {
 		e := echo.New()
 
 		b, err := json.Marshal(tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		req, err := http.NewRequest(echo.PUT, "/url/update/"+tURL.ID, bytes.NewBuffer(b))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 
 		rec := httptest.NewRecorder()
@@ -374,14 +375,14 @@ func TestURLHttp_Update(t *testing.T) {
 		}
 		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Update(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Error(t, models.ErrNoAffected, body.Message)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
@@ -392,10 +393,10 @@ func TestURLHttp_Update(t *testing.T) {
 
 		tURL.Link = "wrong format"
 		b, err := json.Marshal(tURL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		req, err := http.NewRequest(echo.PUT, "/url/update/"+tURL.ID, bytes.NewBuffer(b))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
 
 		rec := httptest.NewRecorder()
@@ -410,14 +411,14 @@ func TestURLHttp_Update(t *testing.T) {
 		}
 		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = handler.Update(c)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var body map[string]string
 		err = json.NewDecoder(rec.Body).Decode(&body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "Link must be a valid URL", body["URL.Link"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -429,7 +430,7 @@ func TestValidateURL(t *testing.T) {
 		Validator: new(urlHttp.URLValidator),
 	}
 	err := u.InitValidation()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cases := []struct {
 		Description string

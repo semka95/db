@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"regexp"
 
@@ -10,7 +11,6 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
@@ -198,20 +198,17 @@ func (u *URLHandler) Update(c echo.Context) error {
 }
 
 func getStatusCode(err error) int {
-	if err == nil {
-		return http.StatusOK
-	}
-	logrus.Error(err)
-	switch err {
-	case models.ErrInternalServerError:
+	if errors.Is(err, models.ErrInternalServerError) {
 		return http.StatusInternalServerError
-	case models.ErrNotFound:
+	}
+	if errors.Is(err, models.ErrNotFound) {
 		return http.StatusNotFound
-	case models.ErrConflict:
+	}
+	if errors.Is(err, models.ErrConflict) {
 		return http.StatusConflict
-	case models.ErrNoAffected:
-		return http.StatusNotFound
-	default:
-		return http.StatusInternalServerError
 	}
+	if errors.Is(err, models.ErrNoAffected) {
+		return http.StatusNotFound
+	}
+	return http.StatusInternalServerError
 }
