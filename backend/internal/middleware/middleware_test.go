@@ -48,7 +48,12 @@ func TestLogger(t *testing.T) {
 	encoder := zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig())
 	core := zapcore.NewCore(encoder, writerSyncer, zapcore.DebugLevel)
 	logger := zap.New(core)
-	defer logger.Sync()
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			t.Log("Can't close logger")
+		}
+	}()
 
 	m := middleware.InitMiddleware(logger)
 

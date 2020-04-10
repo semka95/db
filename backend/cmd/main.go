@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -25,10 +24,6 @@ func init() {
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(err)
-	}
-
-	if viper.GetBool(`debug`) {
-		fmt.Println("Service RUN on DEBUG mode")
 	}
 }
 
@@ -59,8 +54,7 @@ func main() {
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
-		log.Fatal("Connection problem: ", err)
-		os.Exit(1)
+		logger.Fatal("MongoDB connection problem: ", zap.Error(err))
 	}
 	defer func() {
 		if err = client.Disconnect(ctx); err != nil {
@@ -70,17 +64,16 @@ func main() {
 	}()
 
 	if err = client.Ping(ctx, readpref.Primary()); err != nil {
-		log.Fatal("Ping error: ", err)
-	} else {
-		fmt.Println("Png: OK")
+		logger.Fatal("Ping error: ", zap.Error(err))
 	}
+	logger.Info("MongoDB ping: ok")
 
 	ur := _URLRepo.NewMongoURLRepository(client, dbName)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
 	err = _URLHttpDelivery.NewURLHandler(e, uu)
 	if err != nil {
-		log.Fatal("URL handler creation failed: ", err)
+		logger.Fatal("URL handler creation failed: ", zap.Error(err))
 	}
 
-	log.Fatal(e.Start(viper.GetString("server.address")))
+	logger.Fatal("Start server error: ", zap.Error(e.Start(viper.GetString("server.address"))))
 }
