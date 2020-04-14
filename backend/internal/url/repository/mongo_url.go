@@ -4,23 +4,26 @@ import (
 	"context"
 	"fmt"
 
-	"log"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
 
 type mongoURLRepository struct {
-	Conn *mongo.Database
+	Conn   *mongo.Database
+	logger *zap.Logger
 }
 
 // NewMongoURLRepository will create an object that represent the url.Repository interface
-func NewMongoURLRepository(c *mongo.Client, db string) url.Repository {
-	return &mongoURLRepository{c.Database(db)}
+func NewMongoURLRepository(c *mongo.Client, db string, logger *zap.Logger) url.Repository {
+	return &mongoURLRepository{
+		Conn:   c.Database(db),
+		logger: logger,
+	}
 }
 
 func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]*models.URL, error) {
@@ -32,7 +35,7 @@ func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]
 	defer func(ctx context.Context) {
 		err := cur.Close(ctx)
 		if err != nil {
-			log.Println("Cursor was not closed: ", err)
+			m.logger.Error("Can't close cursor: ", zap.Error(err))
 		}
 	}(ctx)
 

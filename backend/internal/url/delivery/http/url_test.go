@@ -177,7 +177,7 @@ func TestURLHttp_Store(t *testing.T) {
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Error(t, models.ErrConflict, body.Message)
+		require.Error(t, models.ErrConflict, body.Message)
 
 		assert.Equal(t, http.StatusConflict, rec.Code)
 	})
@@ -273,7 +273,7 @@ func TestURLHttp_Delete(t *testing.T) {
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Error(t, models.ErrNoAffected, body.Message)
+		require.Error(t, models.ErrNoAffected, body.Message)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
@@ -383,7 +383,7 @@ func TestURLHttp_Update(t *testing.T) {
 		var body urlHttp.ResponseError
 		err = json.NewDecoder(rec.Body).Decode(&body)
 		require.NoError(t, err)
-		assert.Error(t, models.ErrNoAffected, body.Message)
+		require.Error(t, models.ErrNoAffected, body.Message)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})

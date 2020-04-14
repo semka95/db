@@ -11,6 +11,7 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
@@ -25,6 +26,7 @@ type ResponseError struct {
 type URLHandler struct {
 	URLUsecase url.Usecase
 	Validator  *URLValidator
+	logger     *zap.Logger
 }
 
 // URLValidator represent validation struct for url
@@ -40,10 +42,11 @@ type CreateID struct {
 }
 
 // NewURLHandler will initialize the url/ resources endpoint
-func NewURLHandler(e *echo.Echo, us url.Usecase) error {
+func NewURLHandler(e *echo.Echo, us url.Usecase, logger *zap.Logger) error {
 	handler := &URLHandler{
 		URLUsecase: us,
 		Validator:  new(URLValidator),
+		logger:     logger,
 	}
 
 	err := handler.InitValidation()
@@ -121,7 +124,7 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 
 	url, err := u.URLUsecase.GetByID(ctx, id)
 	if err != nil {
-		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 	return c.Redirect(http.StatusMovedPermanently, url.Link)
 }
@@ -145,7 +148,7 @@ func (u *URLHandler) Store(c echo.Context) error {
 
 	id, err := u.URLUsecase.Store(ctx, url)
 	if err != nil {
-		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, CreateID{ID: id})
@@ -167,7 +170,7 @@ func (u *URLHandler) Delete(c echo.Context) error {
 	}
 
 	if err = u.URLUsecase.Delete(ctx, id); err != nil {
-		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, nil)
@@ -191,16 +194,13 @@ func (u *URLHandler) Update(c echo.Context) error {
 	}
 
 	if err := u.URLUsecase.Update(ctx, url); err != nil {
-		return c.JSON(getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, url)
 }
 
-func getStatusCode(err error) int {
-	if errors.Is(err, models.ErrInternalServerError) {
-		return http.StatusInternalServerError
-	}
+func (u *URLHandler) getStatusCode(err error) int {
 	if errors.Is(err, models.ErrNotFound) {
 		return http.StatusNotFound
 	}
@@ -210,5 +210,7 @@ func getStatusCode(err error) int {
 	if errors.Is(err, models.ErrNoAffected) {
 		return http.StatusNotFound
 	}
+
+	u.logger.Error("Server error: ", zap.Error(err))
 	return http.StatusInternalServerError
 }
