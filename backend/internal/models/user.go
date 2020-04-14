@@ -26,3 +26,8 @@ func NewUser() *User {
 		CreatedAt: time.Now().Truncate(time.Millisecond).UTC(),
 	}
 }
+
+// Sanitize clears user's password
+func (u *User) Sanitize() {
+	u.Password = ""
+}
