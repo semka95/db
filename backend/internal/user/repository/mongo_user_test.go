@@ -29,16 +29,9 @@ func TestMongoUserRepository_GetByID(t *testing.T) {
 	defer mt.Close()
 	tUser := models.NewUser()
 
-	mt.RunOpts("get user not valid id", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByID(mtest.Background, "not valid")
-		assert.Nil(mt, result)
-		assert.Error(mt, err, models.ErrBadParamInput)
-	})
-
 	mt.RunOpts("get user not exist", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByID(mtest.Background, "507f191e810c19729de860ea")
+		result, err := repository.GetByID(mtest.Background, tUser.ID)
 		assert.Nil(mt, result)
 		assert.Error(mt, err, models.ErrNotFound)
 	})
@@ -48,7 +41,7 @@ func TestMongoUserRepository_GetByID(t *testing.T) {
 		assert.NoError(mt, err)
 
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByID(mtest.Background, tUser.ID.Hex())
+		result, err := repository.GetByID(mtest.Background, tUser.ID)
 		assert.NoError(mt, err)
 		assert.EqualValues(t, tUser, result)
 	})
@@ -76,15 +69,9 @@ func TestMongoUserRepository_Delete(t *testing.T) {
 	defer mt.Close()
 	tUser := models.NewUser()
 
-	mt.RunOpts("delete user not valid id", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Delete(mtest.Background, "not valid")
-		assert.Error(mt, err, models.ErrBadParamInput)
-	})
-
 	mt.RunOpts("delete not existing user", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Delete(mtest.Background, "507f191e810c19729de860ea")
+		err := repository.Delete(mtest.Background, tUser.ID)
 		assert.Error(mt, err, models.ErrNoAffected)
 	})
 
@@ -93,7 +80,7 @@ func TestMongoUserRepository_Delete(t *testing.T) {
 		require.NoError(mt, err)
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
 
-		err = repository.Delete(mtest.Background, tUser.ID.Hex())
+		err = repository.Delete(mtest.Background, tUser.ID)
 		require.NoError(mt, err)
 	})
 }

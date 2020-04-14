@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -58,16 +57,11 @@ func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([
 	return result, nil
 }
 
-func (m *mongoUserRepository) GetByID(ctx context.Context, id string) (*models.User, error) {
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, fmt.Errorf("User ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
-	}
-
+func (m *mongoUserRepository) GetByID(ctx context.Context, id primitive.ObjectID) (*models.User, error) {
 	command := bson.D{
 		primitive.E{Key: "find", Value: "user"},
 		primitive.E{Key: "limit", Value: 1},
-		primitive.E{Key: "filter", Value: bson.D{primitive.E{Key: "_id", Value: objID}}},
+		primitive.E{Key: "filter", Value: bson.D{primitive.E{Key: "_id", Value: id}}},
 	}
 
 	list, err := m.fetch(ctx, command)
@@ -83,8 +77,6 @@ func (m *mongoUserRepository) GetByID(ctx context.Context, id string) (*models.U
 }
 
 func (m *mongoUserRepository) Create(ctx context.Context, user *models.User) error {
-	user.ID = primitive.NewObjectID()
-	user.CreatedAt = time.Now().Truncate(time.Millisecond).UTC()
 	_, err := m.Conn.Collection("user").InsertOne(ctx, user)
 	if err != nil {
 		return fmt.Errorf("User store error: %w: %s", models.ErrInternalServerError, err.Error())
@@ -93,13 +85,9 @@ func (m *mongoUserRepository) Create(ctx context.Context, user *models.User) err
 	return nil
 }
 
-func (m *mongoUserRepository) Delete(ctx context.Context, id string) error {
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return fmt.Errorf("User ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
-	}
+func (m *mongoUserRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
 	filter := bson.D{
-		primitive.E{Key: "_id", Value: objID},
+		primitive.E{Key: "_id", Value: id},
 	}
 
 	delRes, err := m.Conn.Collection("user").DeleteOne(ctx, filter)
