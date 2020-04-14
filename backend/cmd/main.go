@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v2"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
 	_URLHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
@@ -19,22 +20,38 @@ import (
 	_URLUcase "bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
 )
 
-func init() {
-	viper.SetConfigFile(`config.json`)
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
+// Config stores app configuration
+type Config struct {
+	Server struct {
+		Address string `yaml:"address,required"`
+		Timeout int    `yaml:"timeout,required"`
+	} `yaml:"server,required"`
+	Mongo struct {
+		Name     string `yaml:"name,required"`
+		User     string `yaml:"user,required"`
+		Password string `yaml:"pwd,required"`
+		Port     string `yaml:"port,required"`
+	} `yaml:"mongo,required"`
 }
 
 func main() {
-	timeoutContext := time.Duration(viper.GetInt("context.timeout")) * time.Second
-	dbPort := viper.GetString(`mongo.port`)
-	dbUser := viper.GetString(`mongo.user`)
-	dbPass := viper.GetString(`mongo.pwd`)
-	dbName := viper.GetString(`mongo.name`)
-	uri := fmt.Sprintf("mongodb://%s:%s@mongodb:%s", dbUser, dbPass, dbPort)
-	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
+	f, err := os.Open("../config.yaml")
+	if err != nil {
+		log.Fatal("Can't open config file: ", err)
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			log.Println("Can't close config file: ", err)
+		}
+	}()
+
+	var cfg Config
+	decoder := yaml.NewDecoder(f)
+	err = decoder.Decode(&cfg)
+	if err != nil {
+		log.Fatal("Can't decode config file: ", err)
+	}
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -46,6 +63,10 @@ func main() {
 			log.Println("Can't close logger: ", err)
 		}
 	}()
+
+	timeoutContext := time.Duration(cfg.Server.Timeout) * time.Second
+	uri := fmt.Sprintf("mongodb://%s:%s@mongodb:%s", cfg.Mongo.User, cfg.Mongo.Password, cfg.Mongo.Port)
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
 
 	e := echo.New()
 	middL := middleware.InitMiddleware(logger)
@@ -68,12 +89,12 @@ func main() {
 	}
 	logger.Info("MongoDB ping: ok")
 
-	ur := _URLRepo.NewMongoURLRepository(client, dbName)
+	ur := _URLRepo.NewMongoURLRepository(client, cfg.Mongo.Name, logger)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
-	err = _URLHttpDelivery.NewURLHandler(e, uu)
+	err = _URLHttpDelivery.NewURLHandler(e, uu, logger)
 	if err != nil {
 		logger.Fatal("URL handler creation failed: ", zap.Error(err))
 	}
 
-	logger.Fatal("Start server error: ", zap.Error(e.Start(viper.GetString("server.address"))))
+	logger.Fatal("Start server error: ", zap.Error(e.Start(cfg.Server.Address)))
 }

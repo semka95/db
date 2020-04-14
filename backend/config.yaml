@@ -1,0 +1,11 @@
+# Server configurations
+server:
+  address: ":9090"
+  timeout: 20
+
+# MongoDB credentials
+mongo:
+  name: "shortener"
+  user: "admin"
+  pwd: "password"
+  port: "27017"
