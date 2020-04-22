@@ -9,10 +9,10 @@ import (
 // User represents the User model
 type User struct {
 	ID        primitive.ObjectID `json:"id,omitempty" bson:"_id"`
-	FullName  string             `json:"full_name,omitempty" bson:"full_name,omitempty"`
-	Email     string             `json:"email,omitempty" bson:"email,omitempty"`
-	Password  string             `json:"password,omitempty" bson:"password,omitempty"`
-	CreatedAt time.Time          `json:"created_at,omitempty" bson:"created_at,omitempty"`
+	FullName  string             `json:"full_name,omitempty" bson:"full_name,omitempty" validate:"max=30"`
+	Email     string             `json:"email,omitempty" bson:"email,omitempty" validate:"email"`
+	Password  string             `json:"password,omitempty" bson:"password,omitempty" validate:"min=8,max=30"`
+	CreatedAt time.Time          `json:"created_at,omitempty" bson:"created_at"`
 }
 
 // NewUser creates instance of User model
