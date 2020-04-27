@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -116,5 +118,19 @@ func run(logger *zap.Logger) error {
 		return fmt.Errorf("url handler creation failed: %w", err)
 	}
 
-	return e.Start(cfg.Server.Address)
+	go func() {
+		if err := e.Start(cfg.Server.Address); err != nil {
+			logger.Error("can't start server: ", zap.Error(err))
+		}
+	}()
+
+	// Gracefull shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+	if err := e.Shutdown(ctx); err != nil {
+		return fmt.Errorf("can't shutdownn server: %w", err)
+	}
+
+	return nil
 }
