@@ -8,4 +8,4 @@ mongo:
   name: "shortener"
   user: "admin"
   pwd: "password"
-  port: "27017"
+  host_port: "mongodb:27017"
