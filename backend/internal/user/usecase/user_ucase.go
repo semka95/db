@@ -47,6 +47,7 @@ func (u *userUsecase) Update(c context.Context, user *models.User) error {
 		return fmt.Errorf("Can't generate hash from this password - %s: %w: %s", user.Password, models.ErrInternalServerError, err.Error())
 	}
 	user.Password = hashedPwd
+	user.UpdatedAt = time.Now()
 
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()

@@ -8,6 +8,7 @@ type URL struct {
 	Link           string    `json:"link" bson:"link" validate:"required,url"`
 	ExpirationDate time.Time `json:"expiration_date" bson:"expiration_date"`
 	CreatedAt      time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 // NewURL creates instance of URL model
@@ -17,5 +18,6 @@ func NewURL() *URL {
 		Link:           "http://www.example.org",
 		ExpirationDate: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC(),
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
+		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}
 }

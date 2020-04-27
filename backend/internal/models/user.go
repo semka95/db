@@ -13,6 +13,7 @@ type User struct {
 	Email     string             `json:"email,omitempty" bson:"email,omitempty" validate:"email"`
 	Password  string             `json:"password,omitempty" bson:"password,omitempty" validate:"min=8,max=30"`
 	CreatedAt time.Time          `json:"created_at,omitempty" bson:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
 }
 
 // NewUser creates instance of User model
@@ -24,6 +25,7 @@ func NewUser() *User {
 		Email:     "test@example.com",
 		Password:  "",
 		CreatedAt: time.Now().Truncate(time.Millisecond).UTC(),
+		UpdatedAt: time.Now().Truncate(time.Millisecond).UTC(),
 	}
 }
 

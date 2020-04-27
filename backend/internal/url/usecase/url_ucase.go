@@ -33,6 +33,7 @@ func (u *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) 
 
 func (u *urlUsecase) Update(c context.Context, url *models.URL) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+	url.UpdatedAt = time.Now()
 	defer cancel()
 
 	return u.urlRepo.Update(ctx, url)
