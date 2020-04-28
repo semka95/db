@@ -1,0 +1,12 @@
+[
+  {
+    "createUser": "admin",
+    "pwd": "password",
+    "roles": [
+      {
+        "role": "readWrite",
+        "db": "shortener"
+      }
+    ]
+  }
+]
