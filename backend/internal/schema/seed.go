@@ -10,7 +10,7 @@ import (
 )
 
 // Seed inserts data in database for development purposes
-func Seed(ctx context.Context, db *mongo.Database, dbName string) error {
+func Seed(ctx context.Context, db *mongo.Database) error {
 	collections := make(map[string][]interface{}, 2)
 	collections["url"] = []interface{}{
 		models.URL{

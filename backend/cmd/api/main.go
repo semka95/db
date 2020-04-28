@@ -4,20 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
 	_URLHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	_URLRepo "bitbucket.org/dbproject_ivt/db/backend/internal/url/repository"
 	_URLUcase "bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
@@ -26,15 +23,10 @@ import (
 // Config stores app configuration
 type Config struct {
 	Server struct {
-		Address string `yaml:"address,required"`
-		Timeout int    `yaml:"timeout,required"`
-	} `yaml:"server,required"`
-	Mongo struct {
-		Name     string `yaml:"name,required"`
-		User     string `yaml:"user,required"`
-		Password string `yaml:"pwd,required"`
-		HostPort string `yaml:"host_port,required"`
-	} `yaml:"mongo,required"`
+		Address string `yaml:"address"`
+		Timeout int    `yaml:"timeout"`
+	} `yaml:"server"`
+	database.MongoConfig `yaml:"mongo"`
 }
 
 func main() {
@@ -60,7 +52,7 @@ func main() {
 
 func run(logger *zap.Logger) error {
 	// Configuration
-	f, err := os.Open("../config.yaml")
+	f, err := os.Open("../../config.yaml")
 	if err != nil {
 		return fmt.Errorf("can't open config file: %w", err)
 	}
@@ -78,13 +70,7 @@ func run(logger *zap.Logger) error {
 		return fmt.Errorf("can't decode config file: %w", err)
 	}
 
-	// MongoDB configure
 	timeoutContext := time.Duration(cfg.Server.Timeout) * time.Second
-	uri := url.URL{
-		Scheme: "mongodb",
-		User:   url.UserPassword(cfg.Mongo.User, cfg.Mongo.Password),
-		Host:   cfg.Mongo.HostPort,
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
 	defer cancel()
 
@@ -95,9 +81,9 @@ func run(logger *zap.Logger) error {
 	e.Use(middL.Logger)
 
 	// Start database
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri.String()))
+	client, err := database.Open(ctx, cfg.MongoConfig, logger)
 	if err != nil {
-		return fmt.Errorf("mongodb connection problem: %w", err)
+		return err
 	}
 	defer func() {
 		if err = client.Disconnect(ctx); err != nil {
@@ -105,13 +91,8 @@ func run(logger *zap.Logger) error {
 		}
 	}()
 
-	if err = client.Ping(ctx, readpref.Primary()); err != nil {
-		return fmt.Errorf("ping error: %w", err)
-	}
-	logger.Info("mongodb ping: ok")
-
 	// Start service
-	ur := _URLRepo.NewMongoURLRepository(client, cfg.Mongo.Name, logger)
+	ur := _URLRepo.NewMongoURLRepository(client, cfg.MongoConfig.Name, logger)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
 	err = _URLHttpDelivery.NewURLHandler(e, uu, logger)
 	if err != nil {
