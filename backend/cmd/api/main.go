@@ -11,23 +11,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/config"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
 	_URLHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	_URLRepo "bitbucket.org/dbproject_ivt/db/backend/internal/url/repository"
 	_URLUcase "bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
 )
-
-// Config stores app configuration
-type Config struct {
-	Server struct {
-		Address string `yaml:"address"`
-		Timeout int    `yaml:"timeout"`
-	} `yaml:"server"`
-	database.MongoConfig `yaml:"mongo"`
-}
 
 func main() {
 	// Logging
@@ -52,22 +43,9 @@ func main() {
 
 func run(logger *zap.Logger) error {
 	// Configuration
-	f, err := os.Open("../../config.yaml")
+	cfg, err := config.AppConfig("../../config.yaml", logger)
 	if err != nil {
-		return fmt.Errorf("can't open config file: %w", err)
-	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			logger.Error("can't close config file: %w", zap.Error(err))
-		}
-	}()
-
-	var cfg Config
-	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(&cfg)
-	if err != nil {
-		return fmt.Errorf("can't decode config file: %w", err)
+		return err
 	}
 
 	timeoutContext := time.Duration(cfg.Server.Timeout) * time.Second

@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/config"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/schema"
 	"github.com/golang-migrate/migrate/v4"
@@ -15,17 +15,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
 )
-
-// Config stores app configuration
-type Config struct {
-	Server struct {
-		Address string `yaml:"address"`
-		Timeout int    `yaml:"timeout"`
-	} `yaml:"server"`
-	database.MongoConfig `yaml:"mongo"`
-}
 
 func main() {
 	// Logging
@@ -34,13 +24,13 @@ func main() {
 		log.Println("can't create logger: ", err)
 		os.Exit(1)
 	}
-	// defer func() {
-	// 	err := logger.Sync()
-	// 	if err != nil {
-	// 		log.Println("can't close logger: ", err)
-	// 		os.Exit(1)
-	// 	}
-	// }()
+	defer func() {
+		err := logger.Sync()
+		if err != nil {
+			log.Println("can't close logger: ", err)
+			os.Exit(1)
+		}
+	}()
 
 	if err := run(logger); err != nil {
 		logger.Error("shutting down, error: ", zap.Error(err))
@@ -49,28 +39,17 @@ func main() {
 }
 
 func run(logger *zap.Logger) error {
-	f, err := os.Open("../../config.yaml")
+	// Configuration
+	cfg, err := config.AppConfig("../../config.yaml", logger)
 	if err != nil {
-		return fmt.Errorf("can't open config file: %w", err)
-	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			logger.Error("can't close config file: %w", zap.Error(err))
-		}
-	}()
-
-	var cfg Config
-	decoder := yaml.NewDecoder(f)
-	err = decoder.Decode(&cfg)
-	if err != nil {
-		return fmt.Errorf("can't decode config file: %w", err)
+		return err
 	}
 
 	timeoutContext := time.Duration(cfg.Server.Timeout) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
 	defer cancel()
 
+	// Start database
 	client, err := database.Open(ctx, cfg.MongoConfig, logger)
 	if err != nil {
 		return err
@@ -80,6 +59,10 @@ func run(logger *zap.Logger) error {
 			logger.Error("mongodb client disconnect error: ", zap.Error(err))
 		}
 	}()
+
+	if len(os.Args) < 2 {
+		return errors.New("Must specify a command")
+	}
 
 	switch os.Args[1] {
 	case "migrate_mongo":
