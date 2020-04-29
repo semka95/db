@@ -55,10 +55,10 @@ func NewURLHandler(e *echo.Echo, us url.Usecase, logger *zap.Logger) error {
 	}
 	e.Validator = handler.Validator
 
-	e.POST("/url/create", handler.Store)
+	e.POST("/v1/url/create", handler.Store)
 	e.GET("/:id", handler.GetByID)
-	e.DELETE("/url/delete/:id", handler.Delete)
-	e.PUT("/url/update/:id", handler.Update)
+	e.DELETE("/v1/url/id", handler.Delete)
+	e.PUT("/v1/url/update/:id", handler.Update)
 
 	return nil
 }

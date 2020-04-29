@@ -54,10 +54,10 @@ func NewUserHandler(e *echo.Echo, us user.Usecase, logger *zap.Logger) error {
 	}
 	e.Validator = handler.Validator
 
-	e.POST("/user/create", handler.Create)
-	e.GET("/user/:id", handler.GetByID)
-	e.DELETE("/user/:id", handler.Delete)
-	e.PUT("/user/", handler.Update)
+	e.POST("/v1/user/create", handler.Create)
+	e.GET("/v1/user/:id", handler.GetByID)
+	e.DELETE("/v1/user/:id", handler.Delete)
+	e.PUT("/v1/user/", handler.Update)
 
 	return nil
 }
