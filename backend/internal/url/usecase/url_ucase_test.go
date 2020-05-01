@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
 	"github.com/golang/mock/gomock"
@@ -18,19 +19,19 @@ func TestURLUsecase_GetByID(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := models.NewURL()
+	tURL := tests.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
 
-	t.Run("test get not existed record", func(t *testing.T) {
+	t.Run("get not existing url", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, models.ErrNotFound)
 		result, err := uc.GetByID(context.Background(), tURL.ID)
 		assert.Error(t, err, models.ErrNotFound)
 		assert.Nil(t, result)
 	})
 
-	t.Run("test get existed record", func(t *testing.T) {
+	t.Run("get url success", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 		result, err := uc.GetByID(context.Background(), tURL.ID)
 		require.NoError(t, err)
@@ -42,50 +43,55 @@ func TestURLUsecase_Store(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := models.NewURL()
+	tCreateURL := tests.NewCreateURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
 
-	t.Run("test store empty ID", func(t *testing.T) {
-		tURL.ID = ""
-		repository.EXPECT().Store(gomock.Any(), tURL).Return(nil)
+	t.Run("store url empty ID", func(t *testing.T) {
+		tCreateURL.ID = nil
+
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
-		result, err := uc.Store(context.Background(), tURL)
+		repository.EXPECT().Store(gomock.Any(), gomock.Any()).Return(nil)
+
+		result, err := uc.Store(context.Background(), tCreateURL)
 		require.NoError(t, err)
-		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result)
+
+		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result.ID)
+		assert.Equal(t, tCreateURL.Link, result.Link)
+		assert.Equal(t, tCreateURL.ExpirationDate, result.ExpirationDate)
 	})
 
-	t.Run("test store empty ID, generated existed token", func(t *testing.T) {
-		tURL.ID = ""
-		repository.EXPECT().Store(gomock.Any(), tURL).Return(nil)
-		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(tURL, nil).Times(1)
-		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
-		result, err := uc.Store(context.Background(), tURL)
+	t.Run("store url filled ID", func(t *testing.T) {
+		tCreateURL.ID = tests.StringPointer("test123456")
+
+		repository.EXPECT().GetByID(gomock.Any(), *tCreateURL.ID).Return(nil, models.ErrNotFound)
+		repository.EXPECT().Store(gomock.Any(), gomock.Any()).Return(nil)
+
+		result, err := uc.Store(context.Background(), tCreateURL)
 		require.NoError(t, err)
-		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result)
+
+		assert.Equal(t, *tCreateURL.ID, result.ID)
+		assert.Equal(t, tCreateURL.Link, result.Link)
+		assert.Equal(t, tCreateURL.ExpirationDate, result.ExpirationDate)
 	})
 
-	t.Run("test store filled ID", func(t *testing.T) {
-		tURL.ID = "test"
-		repository.EXPECT().Store(gomock.Any(), tURL).Return(nil)
-		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
-		result, err := uc.Store(context.Background(), tURL)
-		require.NoError(t, err)
-		assert.Equal(t, tURL.ID, result)
-	})
+	t.Run("store existing url", func(t *testing.T) {
+		tCreateURL.ID = tests.StringPointer("test123456")
+		tURL := &models.URL{}
 
-	t.Run("test store already existed ID", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(tURL, nil)
-		result, err := uc.Store(context.Background(), tURL)
+
+		result, err := uc.Store(context.Background(), tCreateURL)
 		assert.Error(t, err, models.ErrConflict)
 		assert.Empty(t, result)
 	})
 
-	t.Run("test store repository store error", func(t *testing.T) {
-		repository.EXPECT().Store(gomock.Any(), tURL).Return(models.ErrInternalServerError)
+	t.Run("store url repository error", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
-		result, err := uc.Store(context.Background(), tURL)
+		repository.EXPECT().Store(gomock.Any(), gomock.Any()).Return(models.ErrInternalServerError)
+
+		result, err := uc.Store(context.Background(), tCreateURL)
 		assert.Error(t, err, models.ErrInternalServerError)
 		assert.Empty(t, result)
 	})
@@ -95,20 +101,24 @@ func TestURLUsecase_Update(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := models.NewURL()
+	tUpdateURL := tests.NewUpdateURL()
+	tUser := tests.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
 
-	t.Run("test update existed record", func(t *testing.T) {
-		repository.EXPECT().Update(gomock.Any(), tURL).Return(nil)
-		err := uc.Update(context.Background(), tURL)
+	t.Run("update existing url", func(t *testing.T) {
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tUser, nil)
+		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+		err := uc.Update(context.Background(), tUpdateURL)
 		require.NoError(t, err)
 	})
 
-	t.Run("test update not existed record", func(t *testing.T) {
-		repository.EXPECT().Update(gomock.Any(), tURL).Return(models.ErrNotFound)
-		err := uc.Update(context.Background(), tURL)
+	t.Run("update not existing url", func(t *testing.T) {
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(nil, models.ErrNotFound)
+
+		err := uc.Update(context.Background(), tUpdateURL)
 		assert.Error(t, err, models.ErrNotFound)
 	})
 }
@@ -117,18 +127,18 @@ func TestURLUsecase_Delete(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tURL := models.NewURL()
+	tURL := tests.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
 
-	t.Run("test delete existed record", func(t *testing.T) {
+	t.Run("delete existing url", func(t *testing.T) {
 		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(nil)
 		err := uc.Delete(context.Background(), tURL.ID)
 		require.NoError(t, err)
 	})
 
-	t.Run("test delete not existed record", func(t *testing.T) {
+	t.Run("delete not existing url", func(t *testing.T) {
 		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(models.ErrNotFound)
 		err := uc.Delete(context.Background(), tURL.ID)
 		assert.Error(t, err, models.ErrNotFound)

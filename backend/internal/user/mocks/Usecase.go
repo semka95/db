@@ -50,32 +50,32 @@ func (mr *MockUsecaseMockRecorder) GetByID(ctx, id interface{}) *gomock.Call {
 }
 
 // Update mocks base method
-func (m *MockUsecase) Update(ctx context.Context, url *models.User) error {
+func (m *MockUsecase) Update(ctx context.Context, user *models.UpdateUser) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, url)
+	ret := m.ctrl.Call(m, "Update", ctx, user)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update
-func (mr *MockUsecaseMockRecorder) Update(ctx, url interface{}) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) Update(ctx, user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUsecase)(nil).Update), ctx, url)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUsecase)(nil).Update), ctx, user)
 }
 
 // Create mocks base method
-func (m *MockUsecase) Create(ctx context.Context, u *models.User) (string, error) {
+func (m *MockUsecase) Create(ctx context.Context, user *models.CreateUser) (*models.User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, u)
-	ret0, _ := ret[0].(string)
+	ret := m.ctrl.Call(m, "Create", ctx, user)
+	ret0, _ := ret[0].(*models.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create
-func (mr *MockUsecaseMockRecorder) Create(ctx, u interface{}) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) Create(ctx, user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUsecase)(nil).Create), ctx, u)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUsecase)(nil).Create), ctx, user)
 }
 
 // Delete mocks base method

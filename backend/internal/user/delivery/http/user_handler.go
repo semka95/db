@@ -35,11 +35,6 @@ type UserValidator struct {
 	Trans ut.Translator
 }
 
-// CreateID represent the response struct
-type CreateID struct {
-	ID string `json:"_id"`
-}
-
 // NewUserHandler will initialize the user/ resources endpoint
 func NewUserHandler(e *echo.Echo, us user.Usecase, logger *zap.Logger) error {
 	handler := &UserHandler{
@@ -78,20 +73,6 @@ func (u *UserHandler) InitValidation() error {
 	}
 
 	u.Validator.V = validator.New()
-	// err := u.Validator.V.RegisterValidation("linkid", checkURL)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// err := u.Validator.V.RegisterTranslation("linkid", u.Validator.Trans, func(ut ut.Translator) error {
-	// 	return ut.Add("linkid", "{0} must contain only a-z, A-Z, 0-9, _, - characters", true)
-	// }, func(ut ut.Translator, fe validator.FieldError) string {
-	// 	t, _ := ut.T("linkid", fe.Field())
-	// 	return t
-	// })
-	// if err != nil {
-	// 	return err
-	// }
 
 	err := en_translations.RegisterDefaultTranslations(u.Validator.V, u.Validator.Trans)
 	if err != nil {
@@ -101,20 +82,9 @@ func (u *UserHandler) InitValidation() error {
 	return nil
 }
 
-// func checkURL(fl validator.FieldLevel) bool {
-// 	r := regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
-// 	return r.MatchString(fl.Field().String())
-// }
-
 // GetByID will get user by given id
 func (u *UserHandler) GetByID(c echo.Context) error {
 	id := c.Param("id")
-
-	// err := u.Validator.V.Var(id, "omitempty,linkid,min=7,max=20")
-	// if err != nil {
-	// 	res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-	// 	return c.JSON(http.StatusBadRequest, res)
-	// }
 
 	ctx := c.Request().Context()
 	if ctx == nil {
@@ -130,12 +100,12 @@ func (u *UserHandler) GetByID(c echo.Context) error {
 
 // Create will store the User by given request body
 func (u *UserHandler) Create(c echo.Context) error {
-	user := new(models.User)
-	if err := c.Bind(user); err != nil {
+	newUser := new(models.CreateUser)
+	if err := c.Bind(newUser); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
 
-	if err := c.Validate(user); err != nil {
+	if err := c.Validate(newUser); err != nil {
 		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, res)
 	}
@@ -145,23 +115,17 @@ func (u *UserHandler) Create(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	id, err := u.UserUsecase.Create(ctx, user)
+	user, err := u.UserUsecase.Create(ctx, newUser)
 	if err != nil {
 		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, CreateID{ID: id})
+	return c.JSON(http.StatusCreated, user)
 }
 
 // Delete will delete User by given id
 func (u *UserHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
-
-	// err := u.Validator.V.Var(id, "omitempty,linkid,min=7,max=20")
-	// if err != nil {
-	// 	res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-	// 	return c.JSON(http.StatusBadRequest, res)
-	// }
 
 	ctx := c.Request().Context()
 	if ctx == nil {
@@ -177,7 +141,7 @@ func (u *UserHandler) Delete(c echo.Context) error {
 
 // Update will update the User by given request body
 func (u *UserHandler) Update(c echo.Context) error {
-	user := new(models.User)
+	user := new(models.UpdateUser)
 	if err := c.Bind(user); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
@@ -196,7 +160,7 @@ func (u *UserHandler) Update(c echo.Context) error {
 		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, user)
+	return c.JSON(http.StatusNoContent, nil)
 }
 
 func (u *UserHandler) getStatusCode(err error) int {

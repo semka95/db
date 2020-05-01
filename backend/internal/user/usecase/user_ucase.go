@@ -27,58 +27,75 @@ func NewUserUsecase(u user.Repository, timeout time.Duration) user.Usecase {
 func (u *userUsecase) GetByID(c context.Context, id string) (*models.User, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, fmt.Errorf("User ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
+		return nil, fmt.Errorf("user ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
 	}
 
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
-	user, err := u.userRepo.GetByID(ctx, objID)
-	if err == nil {
-		user.Sanitize()
-	}
-
-	return user, err
+	return u.userRepo.GetByID(ctx, objID)
 }
 
-func (u *userUsecase) Update(c context.Context, user *models.User) error {
-	hashedPwd, err := generateHash(user.Password)
-	if err != nil {
-		return fmt.Errorf("Can't generate hash from this password - %s: %w: %s", user.Password, models.ErrInternalServerError, err.Error())
-	}
-	user.Password = hashedPwd
-	user.UpdatedAt = time.Now()
-
+func (u *userUsecase) Update(c context.Context, updateUser *models.UpdateUser) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
+
+	user, err := u.userRepo.GetByID(ctx, updateUser.ID)
+	if err != nil {
+		return fmt.Errorf("can't get %s user: %w", updateUser.ID.Hex(), err)
+	}
+
+	if updateUser.FullName != nil {
+		user.FullName = *updateUser.FullName
+	}
+
+	if updateUser.Email != nil {
+		user.Email = *updateUser.Email
+	}
+
+	if updateUser.Password != nil {
+		hashedPwd, err := generateHash(*updateUser.Password)
+		if err != nil {
+			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.Password, models.ErrInternalServerError, err.Error())
+		}
+		user.HashedPassword = hashedPwd
+	}
+
+	user.UpdatedAt = time.Now().Truncate(time.Millisecond).UTC()
 
 	return u.userRepo.Update(ctx, user)
 }
 
-func (u *userUsecase) Create(c context.Context, m *models.User) (string, error) {
-	m.ID = primitive.NewObjectID()
-	m.CreatedAt = time.Now().Truncate(time.Millisecond).UTC()
+func (u *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.User, error) {
 	hashedPwd, err := generateHash(m.Password)
 	if err != nil {
-		return "", fmt.Errorf("Can't generate hash from this password - %s: %w: %s", m.Password, models.ErrInternalServerError, err.Error())
+		return nil, fmt.Errorf("can't generate hash from this password - %s: %w: %s", m.Password, models.ErrInternalServerError, err.Error())
 	}
-	m.Password = hashedPwd
+
+	user := &models.User{
+		ID:             primitive.NewObjectID(),
+		FullName:       m.FullName,
+		Email:          m.Email,
+		HashedPassword: hashedPwd,
+		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
+		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
+	}
 
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
-	err = u.userRepo.Create(ctx, m)
+	err = u.userRepo.Create(ctx, user)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return m.ID.Hex(), nil
+	return user, nil
 }
 
 func (u *userUsecase) Delete(c context.Context, id string) error {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return fmt.Errorf("User ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
+		return fmt.Errorf("user ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
 	}
 
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)

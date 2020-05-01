@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ func TestMain(m *testing.M) {
 func TestMongoUserRepository_GetByID(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tUser := models.NewUser()
+	tUser := tests.NewUser()
 
 	mt.RunOpts("get user not exist", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
@@ -50,7 +51,7 @@ func TestMongoUserRepository_GetByID(t *testing.T) {
 func TestMongoUserRepository_Create(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tUser := models.NewUser()
+	tUser := tests.NewUser()
 
 	mt.RunOpts("create user success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
@@ -67,7 +68,7 @@ func TestMongoUserRepository_Create(t *testing.T) {
 func TestMongoUserRepository_Delete(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tUser := models.NewUser()
+	tUser := tests.NewUser()
 
 	mt.RunOpts("delete not existing user", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
@@ -88,7 +89,7 @@ func TestMongoUserRepository_Delete(t *testing.T) {
 func TestMongoUserRepository_Update(t *testing.T) {
 	mt := mtest.New(t)
 	defer mt.Close()
-	tUser := models.NewUser()
+	tUser := tests.NewUser()
 
 	mt.RunOpts("update not existing user", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)

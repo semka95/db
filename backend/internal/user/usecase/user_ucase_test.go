@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/usecase"
 	"github.com/golang/mock/gomock"
@@ -17,7 +18,7 @@ func TestUserUsecase_GetByID(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tUser := models.NewUser()
+	tUser := tests.NewUser()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewUserUsecase(repository, 10*time.Second)
@@ -35,12 +36,11 @@ func TestUserUsecase_GetByID(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
-	t.Run("get user success, password sanitized", func(t *testing.T) {
+	t.Run("get user success", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUser.ID).Return(tUser, nil)
 		result, err := uc.GetByID(context.Background(), tUser.ID.Hex())
 		assert.NoError(t, err)
 		assert.EqualValues(t, tUser, result)
-		assert.Empty(t, result.Password)
 	})
 }
 
@@ -48,27 +48,53 @@ func TestUserUsecase_Update(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tUser := models.NewUser()
+	tUser := tests.NewUser()
+	tUpdateUser := tests.NewUpdateUser()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewUserUsecase(repository, 10*time.Second)
 
 	t.Run("update not existed user", func(t *testing.T) {
-		repository.EXPECT().Update(gomock.Any(), tUser).Return(models.ErrNotFound)
-		err := uc.Update(context.Background(), tUser)
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(nil, models.ErrNotFound)
+		err := uc.Update(context.Background(), tUpdateUser)
 		assert.Error(t, err, models.ErrNotFound)
 	})
 
 	t.Run("update user success", func(t *testing.T) {
-		password := "test123"
-		tUser.Password = password
-
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
 		repository.EXPECT().Update(gomock.Any(), tUser).Return(nil)
-		err := uc.Update(context.Background(), tUser)
+
+		err := uc.Update(context.Background(), tUpdateUser)
 		assert.NoError(t, err)
 
-		errP := bcrypt.CompareHashAndPassword([]byte(tUser.Password), []byte(password))
+		errP := bcrypt.CompareHashAndPassword([]byte(tUser.HashedPassword), []byte(*tUpdateUser.Password))
 		assert.NoError(t, errP)
+
+		assert.Equal(t, *tUpdateUser.FullName, tUser.FullName)
+		assert.Equal(t, *tUpdateUser.Email, tUser.Email)
+	})
+
+	t.Run("update all fields are empty", func(t *testing.T) {
+		tUser = tests.NewUser()
+		tUserOld := &models.User{
+			ID:             tUser.ID,
+			FullName:       tUser.FullName,
+			Email:          tUser.Email,
+			HashedPassword: tUser.HashedPassword,
+			CreatedAt:      tUser.CreatedAt,
+			UpdatedAt:      tUser.UpdatedAt,
+		}
+		tUpdateUser.Email = nil
+		tUpdateUser.FullName = nil
+		tUpdateUser.Password = nil
+
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
+		repository.EXPECT().Update(gomock.Any(), tUser).Return(nil)
+
+		err := uc.Update(context.Background(), tUpdateUser)
+		assert.NoError(t, err)
+
+		assert.EqualValues(t, tUserOld, tUser)
 	})
 }
 
@@ -76,29 +102,28 @@ func TestUserUsecase_Create(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tUser := models.NewUser()
+	tCreateUser := tests.NewCreateUser()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewUserUsecase(repository, 10*time.Second)
 
 	t.Run("create user error", func(t *testing.T) {
-		repository.EXPECT().Create(gomock.Any(), tUser).Return(models.ErrInternalServerError)
-		result, err := uc.Create(context.Background(), tUser)
+		repository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(models.ErrInternalServerError)
+		result, err := uc.Create(context.Background(), tCreateUser)
 		assert.Error(t, err, models.ErrInternalServerError)
 		assert.Empty(t, result)
 	})
 
 	t.Run("create user success", func(t *testing.T) {
-		password := "test123"
-		tUser.Password = password
-
-		repository.EXPECT().Create(gomock.Any(), tUser).Return(nil)
-		result, err := uc.Create(context.Background(), tUser)
+		repository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+		result, err := uc.Create(context.Background(), tCreateUser)
 		assert.NoError(t, err)
-		assert.Equal(t, tUser.ID.Hex(), result)
 
-		errP := bcrypt.CompareHashAndPassword([]byte(tUser.Password), []byte(password))
+		errP := bcrypt.CompareHashAndPassword([]byte(result.HashedPassword), []byte(tCreateUser.Password))
 		assert.NoError(t, errP)
+
+		assert.Equal(t, tCreateUser.Email, result.Email)
+		assert.Equal(t, tCreateUser.FullName, result.FullName)
 	})
 }
 
@@ -106,7 +131,7 @@ func TestUserUsecase_Delete(t *testing.T) {
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 
-	tUser := models.NewUser()
+	tUser := tests.NewUser()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewUserUsecase(repository, 10*time.Second)

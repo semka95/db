@@ -36,11 +36,6 @@ type URLValidator struct {
 	Trans ut.Translator
 }
 
-// CreateID represent the response struct
-type CreateID struct {
-	ID string `json:"_id"`
-}
-
 // NewURLHandler will initialize the url/ resources endpoint
 func NewURLHandler(e *echo.Echo, us url.Usecase, logger *zap.Logger) error {
 	handler := &URLHandler{
@@ -57,8 +52,8 @@ func NewURLHandler(e *echo.Echo, us url.Usecase, logger *zap.Logger) error {
 
 	e.POST("/v1/url/create", handler.Store)
 	e.GET("/:id", handler.GetByID)
-	e.DELETE("/v1/url/id", handler.Delete)
-	e.PUT("/v1/url/update/:id", handler.Update)
+	e.DELETE("/v1/url/:id", handler.Delete)
+	e.PUT("/v1/url/", handler.Update)
 
 	return nil
 }
@@ -111,7 +106,7 @@ func checkURL(fl validator.FieldLevel) bool {
 func (u *URLHandler) GetByID(c echo.Context) error {
 	id := c.Param("id")
 
-	err := u.Validator.V.Var(id, "omitempty,linkid,min=7,max=20")
+	err := u.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
 		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, res)
@@ -131,7 +126,7 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 
 // Store will store the URL by given request body
 func (u *URLHandler) Store(c echo.Context) error {
-	url := new(models.URL)
+	url := new(models.CreateURL)
 	if err := c.Bind(url); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
@@ -146,19 +141,19 @@ func (u *URLHandler) Store(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	id, err := u.URLUsecase.Store(ctx, url)
+	result, err := u.URLUsecase.Store(ctx, url)
 	if err != nil {
 		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, CreateID{ID: id})
+	return c.JSON(http.StatusCreated, result)
 }
 
 // Delete will delete URL by given id
 func (u *URLHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
 
-	err := u.Validator.V.Var(id, "omitempty,linkid,min=7,max=20")
+	err := u.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
 		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, res)
@@ -178,7 +173,7 @@ func (u *URLHandler) Delete(c echo.Context) error {
 
 // Update will update the URL by given request body
 func (u *URLHandler) Update(c echo.Context) error {
-	url := new(models.URL)
+	url := new(models.UpdateURL)
 	if err := c.Bind(url); err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
@@ -197,7 +192,7 @@ func (u *URLHandler) Update(c echo.Context) error {
 		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, url)
+	return c.JSON(http.StatusNoContent, nil)
 }
 
 func (u *URLHandler) getStatusCode(err error) int {
