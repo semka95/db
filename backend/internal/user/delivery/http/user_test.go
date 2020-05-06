@@ -229,7 +229,7 @@ func TestUserHttp_Delete(t *testing.T) {
 
 		err = handler.Delete(c)
 		require.NoError(t, err)
-		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, http.StatusNoContent, rec.Code)
 	})
 
 	t.Run("delete not existed user", func(t *testing.T) {

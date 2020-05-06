@@ -142,7 +142,7 @@ func (u *UserHandler) Delete(c echo.Context) error {
 		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, nil)
+	return c.JSON(http.StatusNoContent, nil)
 }
 
 // Update will update the User by given request body

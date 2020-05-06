@@ -173,7 +173,7 @@ func (u *URLHandler) Delete(c echo.Context) error {
 		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, nil)
+	return c.JSON(http.StatusNoContent, nil)
 }
 
 // Update will update the URL by given request body
