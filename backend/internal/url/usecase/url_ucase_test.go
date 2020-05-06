@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
@@ -25,9 +26,9 @@ func TestURLUsecase_GetByID(t *testing.T) {
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
 
 	t.Run("get not existing url", func(t *testing.T) {
-		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, models.ErrNotFound)
+		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, web.ErrNotFound)
 		result, err := uc.GetByID(context.Background(), tURL.ID)
-		assert.Error(t, err, models.ErrNotFound)
+		assert.Error(t, err, web.ErrNotFound)
 		assert.Nil(t, result)
 	})
 
@@ -51,7 +52,7 @@ func TestURLUsecase_Store(t *testing.T) {
 	t.Run("store url empty ID", func(t *testing.T) {
 		tCreateURL.ID = nil
 
-		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
+		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, web.ErrNotFound)
 		repository.EXPECT().Store(gomock.Any(), gomock.Any()).Return(nil)
 
 		result, err := uc.Store(context.Background(), tCreateURL)
@@ -65,7 +66,7 @@ func TestURLUsecase_Store(t *testing.T) {
 	t.Run("store url filled ID", func(t *testing.T) {
 		tCreateURL.ID = tests.StringPointer("test123456")
 
-		repository.EXPECT().GetByID(gomock.Any(), *tCreateURL.ID).Return(nil, models.ErrNotFound)
+		repository.EXPECT().GetByID(gomock.Any(), *tCreateURL.ID).Return(nil, web.ErrNotFound)
 		repository.EXPECT().Store(gomock.Any(), gomock.Any()).Return(nil)
 
 		result, err := uc.Store(context.Background(), tCreateURL)
@@ -83,16 +84,16 @@ func TestURLUsecase_Store(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(tURL, nil)
 
 		result, err := uc.Store(context.Background(), tCreateURL)
-		assert.Error(t, err, models.ErrConflict)
+		assert.Error(t, err, web.ErrConflict)
 		assert.Empty(t, result)
 	})
 
 	t.Run("store url repository error", func(t *testing.T) {
-		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, models.ErrNotFound)
-		repository.EXPECT().Store(gomock.Any(), gomock.Any()).Return(models.ErrInternalServerError)
+		repository.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(nil, web.ErrNotFound)
+		repository.EXPECT().Store(gomock.Any(), gomock.Any()).Return(web.ErrInternalServerError)
 
 		result, err := uc.Store(context.Background(), tCreateURL)
-		assert.Error(t, err, models.ErrInternalServerError)
+		assert.Error(t, err, web.ErrInternalServerError)
 		assert.Empty(t, result)
 	})
 }
@@ -116,10 +117,10 @@ func TestURLUsecase_Update(t *testing.T) {
 	})
 
 	t.Run("update not existing url", func(t *testing.T) {
-		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(nil, models.ErrNotFound)
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(nil, web.ErrNotFound)
 
 		err := uc.Update(context.Background(), tUpdateURL)
-		assert.Error(t, err, models.ErrNotFound)
+		assert.Error(t, err, web.ErrNotFound)
 	})
 }
 
@@ -139,8 +140,8 @@ func TestURLUsecase_Delete(t *testing.T) {
 	})
 
 	t.Run("delete not existing url", func(t *testing.T) {
-		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(models.ErrNotFound)
+		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(web.ErrNotFound)
 		err := uc.Delete(context.Background(), tURL.ID)
-		assert.Error(t, err, models.ErrNotFound)
+		assert.Error(t, err, web.ErrNotFound)
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/usecase"
@@ -25,14 +26,14 @@ func TestUserUsecase_GetByID(t *testing.T) {
 
 	t.Run("get not valid id", func(t *testing.T) {
 		result, err := uc.GetByID(context.Background(), "not valid id")
-		assert.Error(t, err, models.ErrBadParamInput)
+		assert.Error(t, err, web.ErrBadParamInput)
 		assert.Nil(t, result)
 	})
 
 	t.Run("get not existed user", func(t *testing.T) {
-		repository.EXPECT().GetByID(gomock.Any(), tUser.ID).Return(nil, models.ErrNotFound)
+		repository.EXPECT().GetByID(gomock.Any(), tUser.ID).Return(nil, web.ErrNotFound)
 		result, err := uc.GetByID(context.Background(), tUser.ID.Hex())
-		assert.Error(t, err, models.ErrNotFound)
+		assert.Error(t, err, web.ErrNotFound)
 		assert.Nil(t, result)
 	})
 
@@ -55,9 +56,9 @@ func TestUserUsecase_Update(t *testing.T) {
 	uc := usecase.NewUserUsecase(repository, 10*time.Second)
 
 	t.Run("update not existed user", func(t *testing.T) {
-		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(nil, models.ErrNotFound)
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(nil, web.ErrNotFound)
 		err := uc.Update(context.Background(), tUpdateUser)
-		assert.Error(t, err, models.ErrNotFound)
+		assert.Error(t, err, web.ErrNotFound)
 	})
 
 	t.Run("update user success", func(t *testing.T) {
@@ -108,9 +109,9 @@ func TestUserUsecase_Create(t *testing.T) {
 	uc := usecase.NewUserUsecase(repository, 10*time.Second)
 
 	t.Run("create user error", func(t *testing.T) {
-		repository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(models.ErrInternalServerError)
+		repository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(web.ErrInternalServerError)
 		result, err := uc.Create(context.Background(), tCreateUser)
-		assert.Error(t, err, models.ErrInternalServerError)
+		assert.Error(t, err, web.ErrInternalServerError)
 		assert.Empty(t, result)
 	})
 
@@ -138,13 +139,13 @@ func TestUserUsecase_Delete(t *testing.T) {
 
 	t.Run("delete not valid id", func(t *testing.T) {
 		err := uc.Delete(context.Background(), "not valid id")
-		assert.Error(t, err, models.ErrBadParamInput)
+		assert.Error(t, err, web.ErrBadParamInput)
 	})
 
 	t.Run("delete not existed user", func(t *testing.T) {
-		repository.EXPECT().Delete(gomock.Any(), tUser.ID).Return(models.ErrNoAffected)
+		repository.EXPECT().Delete(gomock.Any(), tUser.ID).Return(web.ErrNoAffected)
 		err := uc.Delete(context.Background(), tUser.ID.Hex())
-		assert.Error(t, err, models.ErrNoAffected)
+		assert.Error(t, err, web.ErrNoAffected)
 	})
 
 	t.Run("delete success", func(t *testing.T) {

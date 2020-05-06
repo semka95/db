@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user"
 )
 
@@ -66,11 +67,11 @@ func (m *mongoUserRepository) GetByID(ctx context.Context, id primitive.ObjectID
 
 	list, err := m.fetch(ctx, command)
 	if err != nil {
-		return nil, fmt.Errorf("User get error: %w: %s", models.ErrInternalServerError, err.Error())
+		return nil, fmt.Errorf("User get error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if len(list) == 0 {
-		return nil, fmt.Errorf("User was not found: %w", models.ErrNotFound)
+		return nil, fmt.Errorf("User was not found: %w", web.ErrNotFound)
 	}
 
 	return list[0], nil
@@ -79,7 +80,7 @@ func (m *mongoUserRepository) GetByID(ctx context.Context, id primitive.ObjectID
 func (m *mongoUserRepository) Create(ctx context.Context, user *models.User) error {
 	_, err := m.Conn.Collection("user").InsertOne(ctx, user)
 	if err != nil {
-		return fmt.Errorf("User store error: %w: %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("User store error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	return nil
@@ -92,11 +93,11 @@ func (m *mongoUserRepository) Delete(ctx context.Context, id primitive.ObjectID)
 
 	delRes, err := m.Conn.Collection("user").DeleteOne(ctx, filter)
 	if err != nil {
-		return fmt.Errorf("User delete error: %w: %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("User delete error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if delRes.DeletedCount == 0 {
-		return fmt.Errorf("User was not deleted: %w", models.ErrNoAffected)
+		return fmt.Errorf("User was not deleted: %w", web.ErrNoAffected)
 	}
 
 	return nil
@@ -108,17 +109,17 @@ func (m *mongoUserRepository) Update(ctx context.Context, user *models.User) err
 
 	doc, err := toDoc(&user)
 	if err != nil {
-		return fmt.Errorf("Can't convert User to bson.D: %w, %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("Can't convert User to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
 	}
 	update := bson.D{primitive.E{Key: "$set", Value: doc}}
 
 	updRes, err := m.Conn.Collection("user").UpdateOne(ctx, filter, update)
 	if err != nil {
-		return fmt.Errorf("User update error: %w: %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("User update error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if updRes.ModifiedCount == 0 {
-		return fmt.Errorf("User was not updated: %w", models.ErrNoAffected)
+		return fmt.Errorf("User was not updated: %w", web.ErrNoAffected)
 	}
 
 	return nil
@@ -127,9 +128,9 @@ func (m *mongoUserRepository) Update(ctx context.Context, user *models.User) err
 func toDoc(v interface{}) (doc *bson.D, err error) {
 	data, err := bson.Marshal(v)
 	if err != nil {
-		return
+		return doc, err
 	}
 
 	err = bson.Unmarshal(data, &doc)
-	return
+	return doc, err
 }

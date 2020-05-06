@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
 
@@ -66,11 +67,11 @@ func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (*models.UR
 
 	list, err := m.fetch(ctx, command)
 	if err != nil {
-		return nil, fmt.Errorf("URL get error: %w: %s", models.ErrInternalServerError, err.Error())
+		return nil, fmt.Errorf("URL get error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if len(list) == 0 {
-		return nil, fmt.Errorf("URL was not found: %w", models.ErrNotFound)
+		return nil, fmt.Errorf("URL was not found: %w", web.ErrNotFound)
 	}
 
 	return list[0], nil
@@ -79,7 +80,7 @@ func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (*models.UR
 func (m *mongoURLRepository) Store(ctx context.Context, url *models.URL) error {
 	_, err := m.Conn.Collection("url").InsertOne(ctx, url)
 	if err != nil {
-		return fmt.Errorf("URL store error: %w: %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("URL store error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	return nil
@@ -92,11 +93,11 @@ func (m *mongoURLRepository) Delete(ctx context.Context, id string) error {
 
 	delRes, err := m.Conn.Collection("url").DeleteOne(ctx, filter)
 	if err != nil {
-		return fmt.Errorf("URL delete error: %w: %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("URL delete error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if delRes.DeletedCount == 0 {
-		return fmt.Errorf("URL was not deleted: %w", models.ErrNoAffected)
+		return fmt.Errorf("URL was not deleted: %w", web.ErrNoAffected)
 	}
 
 	return nil
@@ -108,17 +109,17 @@ func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error 
 
 	doc, err := toDoc(&url)
 	if err != nil {
-		return fmt.Errorf("Can't convert URL to bson.D: %w, %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("Can't convert URL to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
 	}
 	update := bson.D{primitive.E{Key: "$set", Value: doc}}
 
 	updRes, err := m.Conn.Collection("url").UpdateOne(ctx, filter, update)
 	if err != nil {
-		return fmt.Errorf("URL update error: %w: %s", models.ErrInternalServerError, err.Error())
+		return fmt.Errorf("URL update error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if updRes.ModifiedCount == 0 {
-		return fmt.Errorf("URL was not updated: %w", models.ErrNoAffected)
+		return fmt.Errorf("URL was not updated: %w", web.ErrNoAffected)
 	}
 
 	return nil

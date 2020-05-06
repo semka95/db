@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"regexp"
 
@@ -14,13 +13,9 @@ import (
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
-
-// ResponseError represent the reseponse error struct
-type ResponseError struct {
-	Message string `json:"message"`
-}
 
 // URLHandler represent the httphandler for url
 type URLHandler struct {
@@ -108,8 +103,8 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 
 	err := u.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
-		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, res)
+		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -119,7 +114,7 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 
 	url, err := u.URLUsecase.GetByID(ctx, id)
 	if err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
 	}
 	return c.Redirect(http.StatusMovedPermanently, url.Link)
 }
@@ -128,12 +123,12 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 func (u *URLHandler) Store(c echo.Context) error {
 	url := new(models.CreateURL)
 	if err := c.Bind(url); err != nil {
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(url); err != nil {
-		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, res)
+		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -143,7 +138,7 @@ func (u *URLHandler) Store(c echo.Context) error {
 
 	result, err := u.URLUsecase.Store(ctx, url)
 	if err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, result)
@@ -155,8 +150,8 @@ func (u *URLHandler) Delete(c echo.Context) error {
 
 	err := u.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
-		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, res)
+		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -165,7 +160,7 @@ func (u *URLHandler) Delete(c echo.Context) error {
 	}
 
 	if err = u.URLUsecase.Delete(ctx, id); err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, nil)
@@ -175,12 +170,12 @@ func (u *URLHandler) Delete(c echo.Context) error {
 func (u *URLHandler) Update(c echo.Context) error {
 	url := new(models.UpdateURL)
 	if err := c.Bind(url); err != nil {
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(url); err != nil {
-		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, res)
+		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -189,23 +184,8 @@ func (u *URLHandler) Update(c echo.Context) error {
 	}
 
 	if err := u.URLUsecase.Update(ctx, url); err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
-}
-
-func (u *URLHandler) getStatusCode(err error) int {
-	if errors.Is(err, models.ErrNotFound) {
-		return http.StatusNotFound
-	}
-	if errors.Is(err, models.ErrConflict) {
-		return http.StatusConflict
-	}
-	if errors.Is(err, models.ErrNoAffected) {
-		return http.StatusNotFound
-	}
-
-	u.logger.Error("Server error: ", zap.Error(err))
-	return http.StatusInternalServerError
 }

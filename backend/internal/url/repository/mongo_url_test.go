@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/repository"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ func TestMongoURLRepository_GetByID(t *testing.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
 		result, err := repository.GetByID(mtest.Background, "none")
 		assert.Nil(mt, result)
-		require.Error(mt, err, models.ErrNotFound)
+		require.Error(mt, err, web.ErrNotFound)
 	})
 
 	mt.RunOpts("get url success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
@@ -73,7 +74,7 @@ func TestMongoURLRepository_Delete(t *testing.T) {
 	mt.RunOpts("delete not existing url", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
 		err := repository.Delete(mtest.Background, "none")
-		require.Error(mt, err, models.ErrNoAffected)
+		require.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("delete url success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
@@ -94,7 +95,7 @@ func TestMongoURLRepository_Update(t *testing.T) {
 	mt.RunOpts("update not existing url", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
 		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
 		err := repository.Update(mtest.Background, tURL)
-		require.Error(mt, err, models.ErrNoAffected)
+		require.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("update url success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -27,7 +28,7 @@ func NewUserUsecase(u user.Repository, timeout time.Duration) user.Usecase {
 func (u *userUsecase) GetByID(c context.Context, id string) (*models.User, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, fmt.Errorf("user ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
+		return nil, fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
 	}
 
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
@@ -56,7 +57,7 @@ func (u *userUsecase) Update(c context.Context, updateUser *models.UpdateUser) e
 	if updateUser.Password != nil {
 		hashedPwd, err := generateHash(*updateUser.Password)
 		if err != nil {
-			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.Password, models.ErrInternalServerError, err.Error())
+			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.Password, web.ErrInternalServerError, err.Error())
 		}
 		user.HashedPassword = hashedPwd
 	}
@@ -69,7 +70,7 @@ func (u *userUsecase) Update(c context.Context, updateUser *models.UpdateUser) e
 func (u *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.User, error) {
 	hashedPwd, err := generateHash(m.Password)
 	if err != nil {
-		return nil, fmt.Errorf("can't generate hash from this password - %s: %w: %s", m.Password, models.ErrInternalServerError, err.Error())
+		return nil, fmt.Errorf("can't generate hash from this password - %s: %w: %s", m.Password, web.ErrInternalServerError, err.Error())
 	}
 
 	user := &models.User{
@@ -95,7 +96,7 @@ func (u *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.U
 func (u *userUsecase) Delete(c context.Context, id string) error {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return fmt.Errorf("user ID is not valid ObjectID: %w: %s", models.ErrBadParamInput, err.Error())
+		return fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
 	}
 
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)

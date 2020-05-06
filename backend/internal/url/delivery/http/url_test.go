@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	urlHttp "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
@@ -51,7 +52,7 @@ func TestURLHttp_GetByID(t *testing.T) {
 	})
 
 	t.Run("get url not found", func(t *testing.T) {
-		uc.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, models.ErrNotFound)
+		uc.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, web.ErrNotFound)
 		e := echo.New()
 		req, err := http.NewRequest(echo.GET, "/"+tURL.ID, nil)
 		require.NoError(t, err)
@@ -72,10 +73,10 @@ func TestURLHttp_GetByID(t *testing.T) {
 		err = handler.GetByID(c)
 		require.NoError(t, err)
 
-		var body urlHttp.ResponseError
-		err = json.NewDecoder(rec.Body).Decode(&body)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		assert.Equal(t, models.ErrNotFound.Error(), body.Message)
+		assert.Equal(t, web.ErrNotFound.Error(), body.Error)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
@@ -102,10 +103,13 @@ func TestURLHttp_GetByID(t *testing.T) {
 		err = handler.GetByID(c)
 		require.NoError(t, err)
 
-		var body map[string]string
-		err = json.NewDecoder(rec.Body).Decode(&body)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body[""])
+
+		assert.Equal(t, "Validation error", body.Error)
+		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body.Fields[""])
+
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
@@ -152,7 +156,7 @@ func TestURLHttp_Store(t *testing.T) {
 	})
 
 	t.Run("store url already exists", func(t *testing.T) {
-		uc.EXPECT().Store(gomock.Any(), tCreateURL).Return(nil, models.ErrConflict)
+		uc.EXPECT().Store(gomock.Any(), tCreateURL).Return(nil, web.ErrConflict)
 		e := echo.New()
 
 		b, err := json.Marshal(tURL)
@@ -177,10 +181,10 @@ func TestURLHttp_Store(t *testing.T) {
 		err = handler.Store(c)
 		require.NoError(t, err)
 
-		body := new(urlHttp.ResponseError)
+		body := new(web.ResponseError)
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		require.Error(t, models.ErrConflict, body.Message)
+		require.Error(t, web.ErrConflict, body.Error)
 
 		assert.Equal(t, http.StatusConflict, rec.Code)
 	})
@@ -211,10 +215,12 @@ func TestURLHttp_Store(t *testing.T) {
 		err = handler.Store(c)
 		require.NoError(t, err)
 
-		var body map[string]string
-		err = json.NewDecoder(rec.Body).Decode(&body)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		assert.Equal(t, "ID must contain only a-z, A-Z, 0-9, _, - characters", body["CreateURL.ID"])
+
+		assert.Equal(t, "Validation error", body.Error)
+		assert.Equal(t, "ID must contain only a-z, A-Z, 0-9, _, - characters", body.Fields["CreateURL.ID"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -252,7 +258,7 @@ func TestURLHttp_Delete(t *testing.T) {
 	})
 
 	t.Run("delete not existing url", func(t *testing.T) {
-		uc.EXPECT().Delete(gomock.Any(), tURL.ID).Return(models.ErrNoAffected)
+		uc.EXPECT().Delete(gomock.Any(), tURL.ID).Return(web.ErrNoAffected)
 		e := echo.New()
 		req, err := http.NewRequest(echo.DELETE, "/delete/"+tURL.ID, nil)
 		require.NoError(t, err)
@@ -273,10 +279,10 @@ func TestURLHttp_Delete(t *testing.T) {
 		err = handler.Delete(c)
 		require.NoError(t, err)
 
-		var body urlHttp.ResponseError
-		err = json.NewDecoder(rec.Body).Decode(&body)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		require.Error(t, models.ErrNoAffected, body.Message)
+		require.Error(t, web.ErrNoAffected, body.Error)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
@@ -304,10 +310,13 @@ func TestURLHttp_Delete(t *testing.T) {
 		err = handler.Delete(c)
 		require.NoError(t, err)
 
-		var body map[string]string
-		err = json.NewDecoder(rec.Body).Decode(&body)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body[""])
+
+		assert.Equal(t, "Validation error", body.Error)
+		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body.Fields[""])
+
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
@@ -349,7 +358,7 @@ func TestURLHttp_Update(t *testing.T) {
 	})
 
 	t.Run("update url not exist", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateURL).Return(models.ErrNoAffected)
+		uc.EXPECT().Update(gomock.Any(), tUpdateURL).Return(web.ErrNoAffected)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateURL)
@@ -374,10 +383,10 @@ func TestURLHttp_Update(t *testing.T) {
 		err = handler.Update(c)
 		require.NoError(t, err)
 
-		body := new(urlHttp.ResponseError)
+		body := new(web.ResponseError)
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		require.Error(t, models.ErrNoAffected, body.Message)
+		require.Error(t, web.ErrNoAffected, body.Error)
 
 		assert.Equal(t, http.StatusNotFound, rec.Code)
 	})
@@ -408,10 +417,12 @@ func TestURLHttp_Update(t *testing.T) {
 		err = handler.Update(c)
 		require.NoError(t, err)
 
-		var body map[string]string
-		err = json.NewDecoder(rec.Body).Decode(&body)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		assert.Equal(t, "ID is a required field", body["UpdateURL.ID"])
+
+		assert.Equal(t, "Validation error", body.Error)
+		assert.Equal(t, "ID is a required field", body.Fields["UpdateURL.ID"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})

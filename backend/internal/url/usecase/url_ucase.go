@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
 
@@ -83,7 +84,7 @@ func (u *urlUsecase) getURLToken(ctx context.Context, createID *string) (id stri
 		for {
 			id, err = generateURLToken()
 			if err != nil {
-				return "", fmt.Errorf("can't create URL id token: %w", models.ErrInternalServerError)
+				return "", fmt.Errorf("can't create URL id token: %w", web.ErrInternalServerError)
 			}
 			_, err = u.GetByID(ctx, id)
 			if err != nil {
@@ -95,7 +96,7 @@ func (u *urlUsecase) getURLToken(ctx context.Context, createID *string) (id stri
 	if createID != nil {
 		_, err := u.GetByID(ctx, *createID)
 		if err == nil {
-			return "", fmt.Errorf("can't store URL, already exists: %w", models.ErrConflict)
+			return "", fmt.Errorf("can't store URL, already exists: %w", web.ErrConflict)
 		}
 		id = *createID
 	}

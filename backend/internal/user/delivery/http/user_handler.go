@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/go-playground/locales/en"
@@ -13,13 +12,9 @@ import (
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user"
 )
-
-// ResponseError represent the reseponse error struct
-type ResponseError struct {
-	Message string `json:"message"`
-}
 
 // UserHandler represent the httphandler for user
 type UserHandler struct {
@@ -93,8 +88,9 @@ func (u *UserHandler) GetByID(c echo.Context) error {
 
 	user, err := u.UserUsecase.GetByID(ctx, id)
 	if err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
 	}
+
 	return c.JSON(http.StatusOK, user)
 }
 
@@ -102,12 +98,12 @@ func (u *UserHandler) GetByID(c echo.Context) error {
 func (u *UserHandler) Create(c echo.Context) error {
 	newUser := new(models.CreateUser)
 	if err := c.Bind(newUser); err != nil {
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(newUser); err != nil {
-		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, res)
+		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -117,7 +113,7 @@ func (u *UserHandler) Create(c echo.Context) error {
 
 	user, err := u.UserUsecase.Create(ctx, newUser)
 	if err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, user)
@@ -133,7 +129,7 @@ func (u *UserHandler) Delete(c echo.Context) error {
 	}
 
 	if err := u.UserUsecase.Delete(ctx, id); err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, nil)
@@ -143,12 +139,12 @@ func (u *UserHandler) Delete(c echo.Context) error {
 func (u *UserHandler) Update(c echo.Context) error {
 	user := new(models.UpdateUser)
 	if err := c.Bind(user); err != nil {
-		return c.JSON(http.StatusBadRequest, err)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(user); err != nil {
-		res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, res)
+		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -157,23 +153,8 @@ func (u *UserHandler) Update(c echo.Context) error {
 	}
 
 	if err := u.UserUsecase.Update(ctx, user); err != nil {
-		return c.JSON(u.getStatusCode(err), ResponseError{Message: err.Error()})
+		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
-}
-
-func (u *UserHandler) getStatusCode(err error) int {
-	if errors.Is(err, models.ErrNotFound) {
-		return http.StatusNotFound
-	}
-	if errors.Is(err, models.ErrConflict) {
-		return http.StatusConflict
-	}
-	if errors.Is(err, models.ErrNoAffected) {
-		return http.StatusNotFound
-	}
-
-	u.Logger.Error("Server error: ", zap.Error(err))
-	return http.StatusInternalServerError
 }

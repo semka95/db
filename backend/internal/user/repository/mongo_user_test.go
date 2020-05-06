@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/repository"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ func TestMongoUserRepository_GetByID(t *testing.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
 		result, err := repository.GetByID(mtest.Background, tUser.ID)
 		assert.Nil(mt, result)
-		assert.Error(mt, err, models.ErrNotFound)
+		assert.Error(mt, err, web.ErrNotFound)
 	})
 
 	mt.RunOpts("get user success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
@@ -73,7 +74,7 @@ func TestMongoUserRepository_Delete(t *testing.T) {
 	mt.RunOpts("delete not existing user", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
 		err := repository.Delete(mtest.Background, tUser.ID)
-		assert.Error(mt, err, models.ErrNoAffected)
+		assert.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("delete success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
@@ -94,7 +95,7 @@ func TestMongoUserRepository_Update(t *testing.T) {
 	mt.RunOpts("update not existing user", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
 		err := repository.Update(mtest.Background, tUser)
-		assert.Error(mt, err, models.ErrNoAffected)
+		assert.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("update user success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
