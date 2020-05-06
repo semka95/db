@@ -3,7 +3,9 @@ package http
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -89,6 +91,14 @@ func (u *URLHandler) InitValidation() error {
 		return err
 	}
 
+	u.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+
 	return nil
 }
 
@@ -104,7 +114,7 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 	err := u.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
 		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -128,7 +138,7 @@ func (u *URLHandler) Store(c echo.Context) error {
 
 	if err := c.Validate(url); err != nil {
 		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -151,7 +161,7 @@ func (u *URLHandler) Delete(c echo.Context) error {
 	err := u.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
 		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -175,7 +185,7 @@ func (u *URLHandler) Update(c echo.Context) error {
 
 	if err := c.Validate(url); err != nil {
 		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()

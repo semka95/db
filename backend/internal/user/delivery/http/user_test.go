@@ -194,8 +194,8 @@ func TestUserHttp_Create(t *testing.T) {
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "Validation error", body.Error)
-		assert.Equal(t, "Email must be a valid email address", body.Fields["CreateUser.Email"])
+		assert.Equal(t, "validation error", body.Error)
+		assert.Equal(t, "email must be a valid email address", body.Fields["CreateUser.email"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -362,8 +362,8 @@ func TestUserHttp_Update(t *testing.T) {
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "Validation error", body.Error)
-		assert.Equal(t, "Email must be a valid email address", body.Fields["UpdateUser.Email"])
+		assert.Equal(t, "validation error", body.Error)
+		assert.Equal(t, "email must be a valid email address", body.Fields["UpdateUser.email"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -382,12 +382,12 @@ func TestValidateUser(t *testing.T) {
 		Data        models.CreateUser
 		Want        string
 	}{
-		{"FullName greater than 30 symbols", "CreateUser.FullName", models.CreateUser{FullName: "qwertyuioasdfghjklzxcvbnmqwerta"}, "FullName must be a maximum of 30 characters in length"},
-		{"Email has wrong format", "CreateUser.Email", models.CreateUser{Email: "wrong format"}, "Email must be a valid email address"},
-		{"Email is empty", "CreateUser.Email", models.CreateUser{Password: "test123456777"}, "Email is a required field"},
-		{"Password less than 8 symbols", "CreateUser.Password", models.CreateUser{Password: "sdf"}, "Password must be at least 8 characters in length"},
-		{"Password greater than 30 symbols", "CreateUser.Password", models.CreateUser{Password: "qwertyuuioppasdfghjklzxcvbnmmasdf"}, "Password must be a maximum of 30 characters in length"},
-		{"Password is empty", "CreateUser.Password", models.CreateUser{Email: "test@examle.com"}, "Password is a required field"},
+		{"full_name greater than 30 symbols", "CreateUser.full_name", models.CreateUser{FullName: "qwertyuioasdfghjklzxcvbnmqwerta"}, "full_name must be a maximum of 30 characters in length"},
+		{"email has wrong format", "CreateUser.email", models.CreateUser{Email: "wrong format"}, "email must be a valid email address"},
+		{"email is empty", "CreateUser.email", models.CreateUser{Password: "test123456777"}, "email is a required field"},
+		{"password less than 8 symbols", "CreateUser.password", models.CreateUser{Password: "sdf"}, "password must be at least 8 characters in length"},
+		{"password greater than 30 symbols", "CreateUser.password", models.CreateUser{Password: "qwertyuuioppasdfghjklzxcvbnmmasdf"}, "password must be a maximum of 30 characters in length"},
+		{"password is empty", "CreateUser.password", models.CreateUser{Email: "test@examle.com"}, "password is a required field"},
 	}
 
 	casesUpdateUser := []struct {
@@ -396,11 +396,11 @@ func TestValidateUser(t *testing.T) {
 		Data        models.UpdateUser
 		Want        string
 	}{
-		{"ID is empty", "UpdateUser.ID", models.UpdateUser{Email: tests.StringPointer("test@examle.com")}, "ID is a required field"},
-		{"FullName greater than 30 symbols", "UpdateUser.FullName", models.UpdateUser{FullName: tests.StringPointer("qwertyuioasdfghjklzxcvbnmqwerta")}, "FullName must be a maximum of 30 characters in length"},
-		{"Email has wrong format", "UpdateUser.Email", models.UpdateUser{Email: tests.StringPointer("wrong format")}, "Email must be a valid email address"},
-		{"Password less than 8 symbols", "UpdateUser.Password", models.UpdateUser{Password: tests.StringPointer("sdf")}, "Password must be at least 8 characters in length"},
-		{"Password greater than 30 symbols", "UpdateUser.Password", models.UpdateUser{Password: tests.StringPointer("qwertyuuioppasdfghjklzxcvbnmmasdf")}, "Password must be a maximum of 30 characters in length"},
+		{"id is empty", "UpdateUser.id", models.UpdateUser{Email: tests.StringPointer("test@examle.com")}, "id is a required field"},
+		{"full_name greater than 30 symbols", "UpdateUser.full_name", models.UpdateUser{FullName: tests.StringPointer("qwertyuioasdfghjklzxcvbnmqwerta")}, "full_name must be a maximum of 30 characters in length"},
+		{"email has wrong format", "UpdateUser.email", models.UpdateUser{Email: tests.StringPointer("wrong format")}, "email must be a valid email address"},
+		{"password less than 8 symbols", "UpdateUser.password", models.UpdateUser{Password: tests.StringPointer("sdf")}, "password must be at least 8 characters in length"},
+		{"password greater than 30 symbols", "UpdateUser.password", models.UpdateUser{Password: tests.StringPointer("qwertyuuioppasdfghjklzxcvbnmmasdf")}, "password must be a maximum of 30 characters in length"},
 	}
 
 	for _, test := range casesCreateUser {

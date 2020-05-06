@@ -107,7 +107,7 @@ func TestURLHttp_GetByID(t *testing.T) {
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "Validation error", body.Error)
+		assert.Equal(t, "validation error", body.Error)
 		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body.Fields[""])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -219,8 +219,8 @@ func TestURLHttp_Store(t *testing.T) {
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "Validation error", body.Error)
-		assert.Equal(t, "ID must contain only a-z, A-Z, 0-9, _, - characters", body.Fields["CreateURL.ID"])
+		assert.Equal(t, "validation error", body.Error)
+		assert.Equal(t, "id must contain only a-z, A-Z, 0-9, _, - characters", body.Fields["CreateURL.id"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -314,7 +314,7 @@ func TestURLHttp_Delete(t *testing.T) {
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "Validation error", body.Error)
+		assert.Equal(t, "validation error", body.Error)
 		assert.Equal(t, " must contain only a-z, A-Z, 0-9, _, - characters", body.Fields[""])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -421,8 +421,8 @@ func TestURLHttp_Update(t *testing.T) {
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
 
-		assert.Equal(t, "Validation error", body.Error)
-		assert.Equal(t, "ID is a required field", body.Fields["UpdateURL.ID"])
+		assert.Equal(t, "validation error", body.Error)
+		assert.Equal(t, "id is a required field", body.Fields["UpdateURL.id"])
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -441,12 +441,12 @@ func TestValidateURL(t *testing.T) {
 		Data        models.CreateURL
 		Want        string
 	}{
-		{"ID not valid format", "CreateURL.ID", models.CreateURL{ID: tests.StringPointer("test1/,!")}, "ID must contain only a-z, A-Z, 0-9, _, - characters"},
-		{"ID too short", "CreateURL.ID", models.CreateURL{ID: tests.StringPointer("tes")}, "ID must be at least 7 characters in length"},
-		{"ID too long", "CreateURL.ID", models.CreateURL{ID: tests.StringPointer("testqwertyuiopasdfghj")}, "ID must be a maximum of 20 characters in length"},
-		{"Link not set", "CreateURL.Link", models.CreateURL{ID: tests.StringPointer("test123")}, "Link is a required field"},
-		{"Link has wrong format", "CreateURL.Link", models.CreateURL{ID: tests.StringPointer("test123"), Link: "not url"}, "Link must be a valid URL"},
-		{"Expiration date has wrong format", "CreateURL.ExpirationDate", models.CreateURL{ID: tests.StringPointer("test123"), Link: "https://www.example.org", ExpirationDate: time.Now().AddDate(0, 0, -1)}, "ExpirationDate must be greater than the current Date & Time"},
+		{"id not valid format", "CreateURL.id", models.CreateURL{ID: tests.StringPointer("test1/,!")}, "id must contain only a-z, A-Z, 0-9, _, - characters"},
+		{"id too short", "CreateURL.id", models.CreateURL{ID: tests.StringPointer("tes")}, "id must be at least 7 characters in length"},
+		{"id too long", "CreateURL.id", models.CreateURL{ID: tests.StringPointer("testqwertyuiopasdfghj")}, "id must be a maximum of 20 characters in length"},
+		{"link not set", "CreateURL.link", models.CreateURL{ID: tests.StringPointer("test123")}, "link is a required field"},
+		{"link has wrong format", "CreateURL.link", models.CreateURL{ID: tests.StringPointer("test123"), Link: "not url"}, "link must be a valid URL"},
+		{"expiration date has wrong format", "CreateURL.expiration_date", models.CreateURL{ID: tests.StringPointer("test123"), Link: "https://www.example.org", ExpirationDate: time.Now().AddDate(0, 0, -1)}, "expiration_date must be greater than the current Date & Time"},
 	}
 
 	casesUpdateURL := []struct {
@@ -455,11 +455,11 @@ func TestValidateURL(t *testing.T) {
 		Data        models.UpdateURL
 		Want        string
 	}{
-		{"ID not set", "UpdateURL.ID", models.UpdateURL{}, "ID is a required field"},
-		{"ID not valid format", "UpdateURL.ID", models.UpdateURL{ID: "test1/,!"}, "ID must contain only a-z, A-Z, 0-9, _, - characters"},
-		{"ID too long", "UpdateURL.ID", models.UpdateURL{ID: "testqwertyuiopasdfghj"}, "ID must be a maximum of 20 characters in length"},
-		{"Expiration date not set", "UpdateURL.ExpirationDate", models.UpdateURL{ID: "test123"}, "ExpirationDate is a required field"},
-		{"Expiration date has wrong format", "UpdateURL.ExpirationDate", models.UpdateURL{ID: "test123", ExpirationDate: time.Now().AddDate(0, 0, -1)}, "ExpirationDate must be greater than the current Date & Time"},
+		{"id not set", "UpdateURL.id", models.UpdateURL{}, "id is a required field"},
+		{"id not valid format", "UpdateURL.id", models.UpdateURL{ID: "test1/,!"}, "id must contain only a-z, A-Z, 0-9, _, - characters"},
+		{"id too long", "UpdateURL.id", models.UpdateURL{ID: "testqwertyuiopasdfghj"}, "id must be a maximum of 20 characters in length"},
+		{"expiration date not set", "UpdateURL.expiration_date", models.UpdateURL{ID: "test123"}, "expiration_date is a required field"},
+		{"expiration date has wrong format", "UpdateURL.expiration_date", models.UpdateURL{ID: "test123", ExpirationDate: time.Now().AddDate(0, 0, -1)}, "expiration_date must be greater than the current Date & Time"},
 	}
 
 	for _, test := range casesCreateURL {

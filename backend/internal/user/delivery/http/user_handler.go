@@ -3,6 +3,8 @@ package http
 import (
 	"context"
 	"net/http"
+	"reflect"
+	"strings"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -74,6 +76,14 @@ func (u *UserHandler) InitValidation() error {
 		return err
 	}
 
+	u.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+
 	return nil
 }
 
@@ -103,7 +113,7 @@ func (u *UserHandler) Create(c echo.Context) error {
 
 	if err := c.Validate(newUser); err != nil {
 		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -144,7 +154,7 @@ func (u *UserHandler) Update(c echo.Context) error {
 
 	if err := c.Validate(user); err != nil {
 		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "Validation error", Fields: fields})
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
