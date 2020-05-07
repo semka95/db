@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -27,6 +29,10 @@ func Open(ctx context.Context, cfg MongoConfig, logger *zap.Logger) (*mongo.Clie
 		Host:   cfg.HostPort,
 	}
 
+	if cfg.User == "" || cfg.Password == "" {
+		uri.User = nil
+	}
+
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri.String()))
 	if err != nil {
 		return nil, fmt.Errorf("mongodb connection problem: %w", err)
@@ -38,4 +44,19 @@ func Open(ctx context.Context, cfg MongoConfig, logger *zap.Logger) (*mongo.Clie
 	logger.Info("mongodb ping: ok")
 
 	return client, nil
+}
+
+// StatusCheck gets database status and metrics
+func StatusCheck(ctx context.Context, db *mongo.Database) (*bson.M, error) {
+	statCmd := bson.D{
+		primitive.E{Key: "serverStatus", Value: 1},
+		primitive.E{Key: "metrics", Value: 1},
+	}
+
+	result := new(bson.M)
+	if err := db.RunCommand(ctx, statCmd).Decode(result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

@@ -77,6 +77,9 @@ func run(logger *zap.Logger) error {
 		return fmt.Errorf("url handler creation failed: %w", err)
 	}
 
+	// Status check
+	database.NewStatusHandler(e, client.Database(cfg.MongoConfig.Name))
+
 	go func() {
 		if err := e.Start(cfg.Server.Address); err != nil {
 			logger.Error("can't start server: ", zap.Error(err))
