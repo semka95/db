@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 
-	"bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
+	_MyMiddleware "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/config"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
 	_URLHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
@@ -54,9 +55,10 @@ func run(logger *zap.Logger) error {
 
 	// Echo configure
 	e := echo.New()
-	middL := middleware.InitMiddleware(logger)
+	middL := _MyMiddleware.InitMiddleware(logger)
 	e.Use(middL.CORS)
 	e.Use(middL.Logger)
+	e.Use(middleware.RecoverWithConfig(middleware.DefaultRecoverConfig))
 
 	// Start database
 	client, err := database.Open(ctx, cfg.MongoConfig, logger)
