@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
@@ -81,6 +82,7 @@ func TestUserUsecase_Update(t *testing.T) {
 			ID:             tUser.ID,
 			FullName:       tUser.FullName,
 			Email:          tUser.Email,
+			Roles:          tUser.Roles,
 			HashedPassword: tUser.HashedPassword,
 			CreatedAt:      tUser.CreatedAt,
 			UpdatedAt:      tUser.UpdatedAt,
@@ -152,5 +154,40 @@ func TestUserUsecase_Delete(t *testing.T) {
 		repository.EXPECT().Delete(gomock.Any(), tUser.ID).Return(nil)
 		err := uc.Delete(context.Background(), tUser.ID.Hex())
 		assert.NoError(t, err)
+	})
+}
+
+func TestUserUsecase_Authenticate(t *testing.T) {
+	controller := gomock.NewController(t)
+	defer controller.Finish()
+
+	tUser := tests.NewUser()
+	now := time.Now()
+	password := "password"
+
+	repository := mocks.NewMockRepository(controller)
+	uc := usecase.NewUserUsecase(repository, 10*time.Second)
+
+	t.Run("auth user not found", func(t *testing.T) {
+		repository.EXPECT().GetByEmail(gomock.Any(), tUser.Email).Return(nil, web.ErrNotFound)
+		result, err := uc.Authenticate(context.Background(), now, tUser.Email, password)
+		assert.Error(t, err, web.ErrAuthenticationFailure)
+		assert.Nil(t, result)
+	})
+
+	t.Run("auth incorrect password", func(t *testing.T) {
+		repository.EXPECT().GetByEmail(gomock.Any(), tUser.Email).Return(tUser, nil)
+		result, err := uc.Authenticate(context.Background(), now, tUser.Email, "incorrect_pwd")
+		assert.Error(t, err, web.ErrAuthenticationFailure)
+		assert.Nil(t, result)
+	})
+
+	t.Run("auth user success", func(t *testing.T) {
+		repository.EXPECT().GetByEmail(gomock.Any(), tUser.Email).Return(tUser, nil)
+		result, err := uc.Authenticate(context.Background(), now, tUser.Email, password)
+		assert.NoError(t, err)
+		assert.Equal(t, result.Roles[0], auth.RoleUser)
+		assert.Equal(t, result.Subject, tUser.ID.Hex())
+		assert.Equal(t, result.IssuedAt, now.Unix())
 	})
 }

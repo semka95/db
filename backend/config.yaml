@@ -3,9 +3,15 @@ server:
   address: ":9090"
   timeout: 20
 
+  # Auth parameters
+auth:
+  key_id: "1"
+  private_key_file: "./private.pem"
+  algorithm: "RS256"
+
 # MongoDB credentials
 mongo:
   name: "shortener"
-  user: "admin"
-  pwd: "password"
-  host_port: "mongodb:27017"
+  user: ""
+  pwd: ""
+  host_port: "localhost:27017"

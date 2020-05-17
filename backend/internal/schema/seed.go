@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -14,6 +15,7 @@ func Seed(ctx context.Context, db *mongo.Database) error {
 	collections := make(map[string][]interface{}, 2)
 	timeNow := time.Now().Truncate(time.Millisecond).UTC()
 	expTime := time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC()
+	roles := []string{auth.RoleUser}
 
 	collections["url"] = []interface{}{
 		models.URL{
@@ -66,6 +68,7 @@ func Seed(ctx context.Context, db *mongo.Database) error {
 			FullName:       "User 1",
 			Email:          "test1@example.org",
 			HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS",
+			Roles:          roles,
 			CreatedAt:      timeNow,
 			UpdatedAt:      timeNow,
 		},
@@ -74,6 +77,7 @@ func Seed(ctx context.Context, db *mongo.Database) error {
 			FullName:       "User 2",
 			Email:          "test2@example.org",
 			HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS",
+			Roles:          roles,
 			CreatedAt:      timeNow,
 			UpdatedAt:      timeNow,
 		},
@@ -82,6 +86,7 @@ func Seed(ctx context.Context, db *mongo.Database) error {
 			FullName:       "User 3",
 			Email:          "test3@example.org",
 			HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS",
+			Roles:          roles,
 			CreatedAt:      timeNow,
 			UpdatedAt:      timeNow,
 		},
@@ -90,6 +95,7 @@ func Seed(ctx context.Context, db *mongo.Database) error {
 			FullName:       "User 4",
 			Email:          "test4@example.org",
 			HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS",
+			Roles:          roles,
 			CreatedAt:      timeNow,
 			UpdatedAt:      timeNow,
 		},
@@ -98,6 +104,7 @@ func Seed(ctx context.Context, db *mongo.Database) error {
 			FullName:       "User 5",
 			Email:          "test5@example.org",
 			HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS",
+			Roles:          roles,
 			CreatedAt:      timeNow,
 			UpdatedAt:      timeNow,
 		},
@@ -106,6 +113,7 @@ func Seed(ctx context.Context, db *mongo.Database) error {
 			FullName:       "User 6",
 			Email:          "test6@example.org",
 			HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS",
+			Roles:          roles,
 			CreatedAt:      timeNow,
 			UpdatedAt:      timeNow,
 		},

@@ -19,6 +19,8 @@ var (
 	ErrConflict = errors.New("Your Item already exist")
 	// ErrBadParamInput will throw if the given request-body or params is not valid
 	ErrBadParamInput = errors.New("Given Param is not valid")
+	// ErrAuthenticationFailure will throw if authentication goes wrong
+	ErrAuthenticationFailure = errors.New("Authentication failed")
 )
 
 // ResponseError represent the reseponse error struct
@@ -29,6 +31,9 @@ type ResponseError struct {
 
 // GetStatusCode gets http code from error
 func GetStatusCode(err error, logger *zap.Logger) int {
+	if errors.Is(err, ErrAuthenticationFailure) {
+		return http.StatusUnauthorized
+	}
 	if errors.Is(err, ErrNotFound) {
 		return http.StatusNotFound
 	}

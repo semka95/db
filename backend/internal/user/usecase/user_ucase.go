@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -78,6 +79,7 @@ func (u *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.U
 		FullName:       m.FullName,
 		Email:          m.Email,
 		HashedPassword: hashedPwd,
+		Roles:          []string{auth.RoleUser},
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}
@@ -103,6 +105,23 @@ func (u *userUsecase) Delete(c context.Context, id string) error {
 	defer cancel()
 
 	return u.userRepo.Delete(ctx, objID)
+}
+
+func (u *userUsecase) Authenticate(c context.Context, now time.Time, email, password string) (*auth.Claims, error) {
+	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+	defer cancel()
+
+	user, err := u.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", web.ErrAuthenticationFailure, err.Error())
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(password)); err != nil {
+		return nil, fmt.Errorf("Compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
+	}
+
+	claims := auth.NewClaims(user.ID.Hex(), user.Roles, now, time.Hour)
+	return claims, nil
 }
 
 func generateHash(pass string) (string, error) {

@@ -15,6 +15,11 @@ type Config struct {
 		Address string `yaml:"address"`
 		Timeout int    `yaml:"timeout"`
 	} `yaml:"server"`
+	Auth struct {
+		KeyID          string `yaml:"key_id"`
+		PrivateKeyFile string `yaml:"private_key_file"`
+		Algorithm      string `yaml:"algorithm"`
+	} `yaml:"auth"`
 	database.MongoConfig `yaml:"mongo"`
 }
 
@@ -31,12 +36,11 @@ func AppConfig(cfgPath string, logger *zap.Logger) (*Config, error) {
 		}
 	}()
 
-	var cfg *Config
+	cfg := new(Config)
 	decoder := yaml.NewDecoder(f)
 	err = decoder.Decode(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("can't decode config file: %w", err)
 	}
-
 	return cfg, nil
 }

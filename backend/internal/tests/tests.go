@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -19,7 +20,8 @@ func NewUser() *models.User {
 		ID:             id,
 		FullName:       "John Doe",
 		Email:          "test@example.com",
-		HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS",
+		HashedPassword: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS", // password
+		Roles:          []string{auth.RoleUser},
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}

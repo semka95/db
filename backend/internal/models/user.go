@@ -12,6 +12,7 @@ type User struct {
 	FullName       string             `json:"full_name" bson:"full_name"`
 	Email          string             `json:"email" bson:"email"`
 	HashedPassword string             `json:"-" bson:"hashed_password"`
+	Roles          []string           `json:"roles" bson:"roles"`
 	CreatedAt      time.Time          `json:"created_at" bson:"created_at"`
 	UpdatedAt      time.Time          `json:"updated_at" bson:"updated_at"`
 }

@@ -2,7 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -40,7 +45,7 @@ func main() {
 
 func run(logger *zap.Logger) error {
 	// Configuration
-	cfg, err := config.AppConfig("../../config.yaml", logger)
+	cfg, err := config.AppConfig("./config.yaml", logger)
 	if err != nil {
 		return err
 	}
@@ -61,7 +66,7 @@ func run(logger *zap.Logger) error {
 	}()
 
 	if len(os.Args) < 2 {
-		return errors.New("Must specify a command")
+		return errors.New("must specify a command")
 	}
 
 	switch os.Args[1] {
@@ -69,8 +74,10 @@ func run(logger *zap.Logger) error {
 		err = migrateMongo(client, cfg.MongoConfig.Name)
 	case "seed":
 		err = schema.Seed(ctx, client.Database(cfg.MongoConfig.Name))
+	case "keygen":
+		err = keygen(os.Args[2], logger)
 	default:
-		err = errors.New("Must specify a command")
+		err = errors.New("must specify a command")
 	}
 
 	if err != nil {
@@ -94,6 +101,40 @@ func migrateMongo(db *mongo.Client, dbName string) error {
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return err
+	}
+
+	return nil
+}
+
+// keygen creates an x509 private key for signing auth tokens.
+func keygen(path string, logger *zap.Logger) error {
+	if path == "" {
+		return errors.New("keygen missing argument for key path")
+	}
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return fmt.Errorf("generating keys: %w", err)
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("creating private file: %w", err)
+	}
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			logger.Error("can't close .pem file: ", zap.Error(err))
+		}
+	}()
+
+	block := pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+
+	if err := pem.Encode(file, &block); err != nil {
+		return fmt.Errorf("encoding to private file: %w", err)
 	}
 
 	return nil

@@ -134,3 +134,22 @@ func toDoc(v interface{}) (doc *bson.D, err error) {
 	err = bson.Unmarshal(data, &doc)
 	return doc, err
 }
+
+func (m *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+	command := bson.D{
+		primitive.E{Key: "find", Value: "user"},
+		primitive.E{Key: "limit", Value: 1},
+		primitive.E{Key: "filter", Value: bson.D{primitive.E{Key: "email", Value: email}}},
+	}
+
+	list, err := m.fetch(ctx, command)
+	if err != nil {
+		return nil, fmt.Errorf("User get error: %w: %s", web.ErrInternalServerError, err.Error())
+	}
+
+	if len(list) == 0 {
+		return nil, fmt.Errorf("User with email %s was not found: %w", email, web.ErrNotFound)
+	}
+
+	return list[0], nil
+}

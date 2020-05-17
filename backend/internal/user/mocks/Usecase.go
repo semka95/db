@@ -6,9 +6,11 @@ package mocks
 
 import (
 	models "bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	auth "bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	context "context"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+	time "time"
 )
 
 // MockUsecase is a mock of Usecase interface
@@ -90,4 +92,19 @@ func (m *MockUsecase) Delete(ctx context.Context, id string) error {
 func (mr *MockUsecaseMockRecorder) Delete(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUsecase)(nil).Delete), ctx, id)
+}
+
+// Authenticate mocks base method
+func (m *MockUsecase) Authenticate(ctx context.Context, now time.Time, email, password string) (*auth.Claims, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Authenticate", ctx, now, email, password)
+	ret0, _ := ret[0].(*auth.Claims)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Authenticate indicates an expected call of Authenticate
+func (mr *MockUsecaseMockRecorder) Authenticate(ctx, now, email, password interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockUsecase)(nil).Authenticate), ctx, now, email, password)
 }

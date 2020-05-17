@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -14,15 +15,17 @@ import (
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user"
 )
 
 // UserHandler represent the httphandler for user
 type UserHandler struct {
-	UserUsecase user.Usecase
-	Validator   *UserValidator
-	Logger      *zap.Logger
+	UserUsecase   user.Usecase
+	Authenticator *auth.Authenticator
+	Validator     *UserValidator
+	Logger        *zap.Logger
 }
 
 // UserValidator represent validation struct for user
@@ -33,11 +36,12 @@ type UserValidator struct {
 }
 
 // NewUserHandler will initialize the user/ resources endpoint
-func NewUserHandler(e *echo.Echo, us user.Usecase, logger *zap.Logger) error {
+func NewUserHandler(e *echo.Echo, us user.Usecase, auth *auth.Authenticator, logger *zap.Logger) error {
 	handler := &UserHandler{
-		UserUsecase: us,
-		Validator:   new(UserValidator),
-		Logger:      logger,
+		UserUsecase:   us,
+		Authenticator: auth,
+		Validator:     new(UserValidator),
+		Logger:        logger,
 	}
 
 	err := handler.InitValidation()
@@ -48,6 +52,7 @@ func NewUserHandler(e *echo.Echo, us user.Usecase, logger *zap.Logger) error {
 
 	e.POST("/v1/user/create", handler.Create)
 	e.GET("/v1/user/:id", handler.GetByID)
+	e.GET("v1/user/token", handler.Token)
 	e.DELETE("/v1/user/:id", handler.Delete)
 	e.PUT("/v1/user/", handler.Update)
 
@@ -167,4 +172,32 @@ func (u *UserHandler) Update(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
+}
+
+// Token will return jwt token by given credentials
+func (u *UserHandler) Token(c echo.Context) error {
+	email, pass, ok := c.Request().BasicAuth()
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, web.ResponseError{Error: "can't get email and password using Basic auth"})
+	}
+
+	ctx := c.Request().Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	claims, err := u.UserUsecase.Authenticate(ctx, time.Now(), email, pass)
+	if err != nil {
+		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+	}
+
+	var tkn struct {
+		Token string `json:"token"`
+	}
+	tkn.Token, err = u.Authenticator.GenerateToken(claims)
+	if err != nil {
+		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, tkn)
 }

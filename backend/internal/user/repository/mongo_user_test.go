@@ -114,3 +114,26 @@ func TestMongoUserRepository_Update(t *testing.T) {
 		assert.EqualValues(t, tUser, result)
 	})
 }
+
+func TestMongoUserRepository_GetByEmail(t *testing.T) {
+	mt := mtest.New(t)
+	defer mt.Close()
+	tUser := tests.NewUser()
+
+	mt.RunOpts("get user not exist", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
+		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := repository.GetByEmail(mtest.Background, tUser.Email)
+		assert.Nil(mt, result)
+		assert.Error(mt, err, web.ErrNotFound)
+	})
+
+	mt.RunOpts("get user success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
+		_, err := mt.Coll.InsertOne(mtest.Background, tUser)
+		assert.NoError(mt, err)
+
+		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := repository.GetByEmail(mtest.Background, tUser.Email)
+		assert.NoError(mt, err)
+		assert.EqualValues(t, tUser, result)
+	})
+}

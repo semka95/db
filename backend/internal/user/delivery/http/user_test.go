@@ -2,12 +2,16 @@ package http_test
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	userHttp "bitbucket.org/dbproject_ivt/db/backend/internal/user/delivery/http"
@@ -420,4 +424,110 @@ func TestValidateUser(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUserHttp_Token(t *testing.T) {
+	tUser := tests.NewUser()
+	password := "password"
+	claims := auth.NewClaims(tUser.ID.Hex(), tUser.Roles, time.Now(), time.Hour)
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	kid := "4754d86b-7a6d-4df5-9c65-224741361492"
+	kf := auth.NewSimpleKeyLookupFunc(kid, key.Public().(*rsa.PublicKey))
+	authenticator, err := auth.NewAuthenticator(key, kid, "RS256", kf)
+	require.NoError(t, err)
+
+	token, err := authenticator.GenerateToken(claims)
+	require.NoError(t, err)
+
+	controller := gomock.NewController(t)
+	defer controller.Finish()
+	uc := mocks.NewMockUsecase(controller)
+
+	t.Run("get token success", func(t *testing.T) {
+		uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(claims, nil)
+		e := echo.New()
+		req := httptest.NewRequest(echo.GET, "/user/token", nil)
+		req.SetBasicAuth(tUser.Email, password)
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/user/token")
+
+		handler := userHttp.UserHandler{
+			UserUsecase:   uc,
+			Authenticator: authenticator,
+			Validator:     new(userHttp.UserValidator),
+		}
+		err := handler.InitValidation()
+		require.NoError(t, err)
+
+		err = handler.Token(c)
+		require.NoError(t, err)
+
+		body := make(map[string]string)
+		err = json.NewDecoder(rec.Body).Decode(&body)
+		require.NoError(t, err)
+		assert.Equal(t, token, body["token"])
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("get token no credentials", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(echo.GET, "/user/token", nil)
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/user/token")
+
+		handler := userHttp.UserHandler{
+			UserUsecase:   uc,
+			Authenticator: authenticator,
+			Validator:     new(userHttp.UserValidator),
+		}
+		err := handler.InitValidation()
+		require.NoError(t, err)
+
+		err = handler.Token(c)
+		require.NoError(t, err)
+
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+		assert.Equal(t, "can't get email and password using Basic auth", body.Error)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("get token authentication failure", func(t *testing.T) {
+		uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(nil, web.ErrAuthenticationFailure)
+		e := echo.New()
+		req := httptest.NewRequest(echo.GET, "/user/token", nil)
+		req.SetBasicAuth(tUser.Email, password)
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/user/token")
+
+		handler := userHttp.UserHandler{
+			UserUsecase:   uc,
+			Authenticator: authenticator,
+			Validator:     new(userHttp.UserValidator),
+		}
+		err := handler.InitValidation()
+		require.NoError(t, err)
+
+		err = handler.Token(c)
+		require.NoError(t, err)
+
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+		assert.Equal(t, "Authentication failed", body.Error)
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
 }

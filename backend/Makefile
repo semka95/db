@@ -21,6 +21,15 @@ docker:
 run:
 	docker-compose up -d
 
+authkey:
+	go run ./cmd/admin/main.go keygen ./private.pem
+
+migrate:
+	go run ./cmd/admin/main.go migrate_mongo
+
+seed: migrate
+	go run ./cmd/admin/main.go seed
+
 stop:
 	docker-compose down
 
