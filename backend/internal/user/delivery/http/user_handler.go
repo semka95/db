@@ -12,6 +12,7 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -50,11 +51,11 @@ func NewUserHandler(e *echo.Echo, us user.Usecase, auth *auth.Authenticator, log
 	}
 	e.Validator = handler.Validator
 
-	e.POST("/v1/user/create", handler.Create)
-	e.GET("/v1/user/:id", handler.GetByID)
+	e.POST("/v1/user/create", handler.Create, middleware.JWTWithConfig(auth.JWTConfig))
+	e.GET("/v1/user/:id", handler.GetByID, middleware.JWTWithConfig(auth.JWTConfig))
 	e.GET("v1/user/token", handler.Token)
-	e.DELETE("/v1/user/:id", handler.Delete)
-	e.PUT("/v1/user/", handler.Update)
+	e.DELETE("/v1/user/:id", handler.Delete, middleware.JWTWithConfig(auth.JWTConfig))
+	e.PUT("/v1/user/", handler.Update, middleware.JWTWithConfig(auth.JWTConfig))
 
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 // KeyLookupFunc is used to map a JWT key id (kid) to the corresponding public key.
@@ -36,6 +37,7 @@ func NewSimpleKeyLookupFunc(activeKID string, publicKey *rsa.PublicKey) KeyLooku
 // Authenticator is used to authenticate clients. It can generate a token for a
 // set of user claims and recreate the claims by parsing the token.
 type Authenticator struct {
+	JWTConfig        middleware.JWTConfig
 	privateKey       *rsa.PrivateKey
 	activeKID        string
 	algorithm        string
@@ -69,7 +71,14 @@ func NewAuthenticator(privateKey *rsa.PrivateKey, activeKID, algorithm string, p
 		ValidMethods: []string{algorithm},
 	}
 
+	jwtConfig := middleware.JWTConfig{
+		Claims:        &Claims{},
+		SigningKey:    privateKey.Public().(*rsa.PublicKey),
+		SigningMethod: algorithm,
+	}
+
 	a := Authenticator{
+		JWTConfig:        jwtConfig,
 		privateKey:       privateKey,
 		activeKID:        activeKID,
 		algorithm:        algorithm,
