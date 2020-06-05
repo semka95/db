@@ -2,12 +2,12 @@ package usecase
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	gen "bitbucket.org/dbproject_ivt/db/backend/internal/platform/url_gen"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
@@ -82,10 +82,9 @@ func (u *urlUsecase) Delete(c context.Context, id string) error {
 func (u *urlUsecase) getURLToken(ctx context.Context, createID *string) (id string, err error) {
 	if createID == nil {
 		for {
-			id, err = generateURLToken()
-			if err != nil {
-				return "", fmt.Errorf("can't create URL id token: %w", web.ErrInternalServerError)
-			}
+			src := rand.NewSource(time.Now().UnixNano())
+			id = gen.GenerateURLToken(6, src)
+
 			_, err = u.GetByID(ctx, id)
 			if err != nil {
 				break
@@ -102,14 +101,4 @@ func (u *urlUsecase) getURLToken(ctx context.Context, createID *string) (id stri
 	}
 
 	return id, nil
-}
-
-func generateURLToken() (string, error) {
-	buf := make([]byte, 4)
-	_, err := rand.Read(buf)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(buf), nil
 }
