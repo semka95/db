@@ -15,6 +15,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 
+	_MyMiddleware "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
@@ -37,10 +38,10 @@ type UserValidator struct {
 }
 
 // NewUserHandler will initialize the user/ resources endpoint
-func NewUserHandler(e *echo.Echo, us user.Usecase, auth *auth.Authenticator, logger *zap.Logger) error {
+func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authenticator, logger *zap.Logger) error {
 	handler := &UserHandler{
 		UserUsecase:   us,
-		Authenticator: auth,
+		Authenticator: authenticator,
 		Validator:     new(UserValidator),
 		Logger:        logger,
 	}
@@ -51,11 +52,13 @@ func NewUserHandler(e *echo.Echo, us user.Usecase, auth *auth.Authenticator, log
 	}
 	e.Validator = handler.Validator
 
-	e.POST("/v1/user/create", handler.Create, middleware.JWTWithConfig(auth.JWTConfig))
-	e.GET("/v1/user/:id", handler.GetByID, middleware.JWTWithConfig(auth.JWTConfig))
+	myMiddl := _MyMiddleware.InitMiddleware(logger)
+
+	e.POST("/v1/user/create", handler.Create, middleware.JWTWithConfig(authenticator.JWTConfig))
+	e.GET("/v1/user/:id", handler.GetByID, middleware.JWTWithConfig(authenticator.JWTConfig))
 	e.GET("v1/user/token", handler.Token)
-	e.DELETE("/v1/user/:id", handler.Delete, middleware.JWTWithConfig(auth.JWTConfig))
-	e.PUT("/v1/user/", handler.Update, middleware.JWTWithConfig(auth.JWTConfig))
+	e.DELETE("/v1/user/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
+	e.PUT("/v1/user/", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
 
 	return nil
 }

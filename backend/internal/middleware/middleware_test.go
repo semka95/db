@@ -6,12 +6,12 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
@@ -126,7 +126,7 @@ func TestLogger(t *testing.T) {
 		c := e.NewContext(req, res)
 
 		h := m.Logger(echo.HandlerFunc(func(c echo.Context) error {
-			return fmt.Errorf("test error")
+			return errors.New("test error")
 		}))
 
 		err := h(c)
@@ -150,7 +150,6 @@ func TestJWT(t *testing.T) {
 
 	claims := auth.NewClaims("test user", []string{auth.RoleUser}, time.Now(), time.Minute)
 	token, err := authenticator.GenerateToken(claims)
-	fmt.Println(token)
 	require.NoError(t, err)
 
 	t.Run("auth success", func(t *testing.T) {
@@ -202,8 +201,8 @@ func TestJWT(t *testing.T) {
 
 		err = h(c)
 		var herr *echo.HTTPError
-		if errors.As(err, &herr) {
-			fmt.Println(herr.Message)
+		if !errors.As(err, &herr) {
+			t.Error("error is not type of echo.HTTPError")
 		}
 		assert.EqualValues(t, herr.Message, "missing or malformed jwt")
 	})
@@ -223,5 +222,46 @@ func TestJWT(t *testing.T) {
 
 		err = h(c)
 		assert.Contains(t, err.Error(), "verification error")
+	})
+}
+
+func TestHasRole(t *testing.T) {
+	claims := auth.NewClaims("test user", []string{auth.RoleUser}, time.Now(), time.Minute)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
+
+	t.Run("role check success", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(echo.GET, "/", nil)
+		res := httptest.NewRecorder()
+		c := e.NewContext(req, res)
+		c.Set("user", token)
+
+		m := middl.InitMiddleware(nil).HasRole(auth.RoleUser)
+		h := m(echo.HandlerFunc(func(c echo.Context) error {
+			return c.NoContent(http.StatusOK)
+		}))
+
+		err := h(c)
+		require.NoError(t, err)
+	})
+
+	t.Run("role check fail", func(t *testing.T) {
+		e := echo.New()
+		req := httptest.NewRequest(echo.GET, "/", nil)
+		res := httptest.NewRecorder()
+		c := e.NewContext(req, res)
+		c.Set("user", token)
+
+		m := middl.InitMiddleware(nil).HasRole(auth.RoleAdmin)
+		h := m(echo.HandlerFunc(func(c echo.Context) error {
+			return c.NoContent(http.StatusOK)
+		}))
+
+		err := h(c)
+		var herr *echo.HTTPError
+		if !errors.As(err, &herr) {
+			t.Error("error is not type of echo.HTTPError")
+		}
+		assert.EqualValues(t, herr.Message, "you are not authorized for that action")
 	})
 }

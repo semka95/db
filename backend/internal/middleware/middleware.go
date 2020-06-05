@@ -1,8 +1,11 @@
 package middleware
 
 import (
+	"net/http"
 	"time"
 
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -69,5 +72,22 @@ func (m *GoMiddleware) Logger(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		return nil
+	}
+}
+
+// HasRole validates that an authenticated user has at least one role from a
+// specified list. This method constructs the actual function that is used.
+func (m *GoMiddleware) HasRole(roles ...string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			user := c.Get("user").(*jwt.Token)
+			claims := user.Claims.(auth.Claims)
+
+			if !claims.HasRole(roles...) {
+				return echo.NewHTTPError(http.StatusForbidden, "you are not authorized for that action")
+			}
+
+			return next(c)
+		}
 	}
 }
