@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	gen "bitbucket.org/dbproject_ivt/db/backend/internal/platform/url_gen"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
@@ -32,13 +33,21 @@ func (u *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) 
 	return u.urlRepo.GetByID(ctx, id)
 }
 
-func (u *urlUsecase) Update(c context.Context, updateURL *models.UpdateURL) error {
+func (u *urlUsecase) Update(c context.Context, updateURL *models.UpdateURL, user auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
 	url, err := u.urlRepo.GetByID(ctx, updateURL.ID)
 	if err != nil {
 		return fmt.Errorf("can't get %s user: %w", updateURL.ID, err)
+	}
+
+	if url.UserID == "" {
+		return fmt.Errorf("This url was created by unauthorized user: %w", web.ErrForbidden)
+	}
+
+	if !user.HasRole(auth.RoleAdmin) && url.UserID != user.Subject {
+		return web.ErrForbidden
 	}
 
 	url.ExpirationDate = updateURL.ExpirationDate
@@ -60,6 +69,7 @@ func (u *urlUsecase) Store(c context.Context, createURL *models.CreateURL) (*mod
 		ID:             id,
 		Link:           createURL.Link,
 		ExpirationDate: createURL.ExpirationDate,
+		UserID:         createURL.UserID,
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}

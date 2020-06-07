@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
@@ -15,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
@@ -141,6 +143,11 @@ func (u *URLHandler) Store(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
+	if user, ok := c.Get("user").(*jwt.Token); ok {
+		claims := user.Claims.(auth.Claims)
+		url.UserID = claims.Subject
+	}
+
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
@@ -188,12 +195,18 @@ func (u *URLHandler) Update(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
+	}
+	user := token.Claims.(auth.Claims)
+
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	if err := u.URLUsecase.Update(ctx, url); err != nil {
+	if err := u.URLUsecase.Update(ctx, url, user); err != nil {
 		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
 	}
 

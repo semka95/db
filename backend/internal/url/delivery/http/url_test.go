@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	urlHttp "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
+	"github.com/dgrijalva/jwt-go"
 	validator "github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
@@ -122,11 +124,53 @@ func TestURLHttp_Store(t *testing.T) {
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
+
 	t.Run("store url success", func(t *testing.T) {
 		uc.EXPECT().Store(gomock.Any(), tCreateURL).Return(tURL, nil)
 		e := echo.New()
 
 		b, err := json.Marshal(tCreateURL)
+		require.NoError(t, err)
+		req, err := http.NewRequest(echo.POST, "/url/create", bytes.NewBuffer(b))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/url/create")
+		c.Set("user", token)
+
+		handler := urlHttp.URLHandler{
+			URLUsecase: uc,
+			Validator:  new(urlHttp.URLValidator),
+		}
+		err = handler.InitValidation()
+		c.Echo().Validator = handler.Validator
+		require.NoError(t, err)
+
+		err = handler.Store(c)
+		require.NoError(t, err)
+
+		body := new(models.URL)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+		assert.EqualValues(t, tURL, body)
+
+		assert.Equal(t, http.StatusCreated, rec.Code)
+	})
+
+	t.Run("store url success by anon user", func(t *testing.T) {
+		anonURL := tests.NewURL()
+		anonURL.UserID = ""
+		anonCreateURL := tests.NewCreateURL()
+		anonCreateURL.UserID = ""
+
+		uc.EXPECT().Store(gomock.Any(), anonCreateURL).Return(anonURL, nil)
+		e := echo.New()
+
+		b, err := json.Marshal(anonCreateURL)
 		require.NoError(t, err)
 		req, err := http.NewRequest(echo.POST, "/url/create", bytes.NewBuffer(b))
 		require.NoError(t, err)
@@ -150,7 +194,7 @@ func TestURLHttp_Store(t *testing.T) {
 		body := new(models.URL)
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		assert.EqualValues(t, tURL, body)
+		assert.EqualValues(t, anonURL, body)
 
 		assert.Equal(t, http.StatusCreated, rec.Code)
 	})
@@ -169,6 +213,7 @@ func TestURLHttp_Store(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.SetPath("/url/create")
+		c.Set("user", token)
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
@@ -221,6 +266,36 @@ func TestURLHttp_Store(t *testing.T) {
 
 		assert.Equal(t, "validation error", body.Error)
 		assert.Equal(t, "id must contain only a-z, A-Z, 0-9, _, - characters", body.Fields["CreateURL.id"])
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("store url bad request data", func(t *testing.T) {
+		e := echo.New()
+
+		b := []byte("wrong data")
+
+		req, err := http.NewRequest(echo.POST, "/url/create", bytes.NewBuffer(b))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/url/create")
+
+		handler := urlHttp.URLHandler{
+			URLUsecase: uc,
+			Validator:  new(urlHttp.URLValidator),
+		}
+
+		err = handler.Store(c)
+		require.NoError(t, err)
+
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+
+		assert.Contains(t, body.Error, "Syntax error")
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
@@ -323,13 +398,44 @@ func TestURLHttp_Delete(t *testing.T) {
 
 func TestURLHttp_Update(t *testing.T) {
 	tUpdateURL := tests.NewUpdateURL()
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
 	t.Run("update url success", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateURL).Return(nil)
+		uc.EXPECT().Update(gomock.Any(), tUpdateURL, *claims).Return(nil)
+		e := echo.New()
+
+		b, err := json.Marshal(tUpdateURL)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(echo.PUT, "/url/update", bytes.NewBuffer(b))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/url/update")
+		c.Set("user", token)
+
+		handler := urlHttp.URLHandler{
+			URLUsecase: uc,
+			Validator:  new(urlHttp.URLValidator),
+		}
+		err = handler.InitValidation()
+		c.Echo().Validator = handler.Validator
+		require.NoError(t, err)
+
+		err = handler.Update(c)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+
+	t.Run("update url not authorized", func(t *testing.T) {
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateURL)
@@ -354,11 +460,17 @@ func TestURLHttp_Update(t *testing.T) {
 		err = handler.Update(c)
 		require.NoError(t, err)
 
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+
+		assert.Equal(t, web.ErrForbidden.Error(), body.Error)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("update url not exist", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateURL).Return(web.ErrNoAffected)
+		uc.EXPECT().Update(gomock.Any(), tUpdateURL, *claims).Return(web.ErrNoAffected)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateURL)
@@ -371,6 +483,7 @@ func TestURLHttp_Update(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.SetPath("/url/update")
+		c.Set("user", token)
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
@@ -423,6 +536,36 @@ func TestURLHttp_Update(t *testing.T) {
 
 		assert.Equal(t, "validation error", body.Error)
 		assert.Equal(t, "id is a required field", body.Fields["UpdateURL.id"])
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("update url bad request data", func(t *testing.T) {
+		e := echo.New()
+
+		b := []byte("wrong data")
+
+		req, err := http.NewRequest(echo.PUT, "/url/update", bytes.NewBuffer(b))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/url/update")
+
+		handler := urlHttp.URLHandler{
+			URLUsecase: uc,
+			Validator:  new(urlHttp.URLValidator),
+		}
+
+		err = handler.Update(c)
+		require.NoError(t, err)
+
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+
+		assert.Contains(t, body.Error, "Syntax error")
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})

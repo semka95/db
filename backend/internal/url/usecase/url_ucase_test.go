@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
@@ -103,24 +104,51 @@ func TestURLUsecase_Update(t *testing.T) {
 	defer controller.Finish()
 
 	tUpdateURL := tests.NewUpdateURL()
-	tUser := tests.NewURL()
+	tURL := tests.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
 
 	t.Run("update existing url", func(t *testing.T) {
-		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tUser, nil)
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateURL)
+		err := uc.Update(context.Background(), tUpdateURL, *claims)
 		require.NoError(t, err)
 	})
 
 	t.Run("update not existing url", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(nil, web.ErrNotFound)
 
-		err := uc.Update(context.Background(), tUpdateURL)
+		err := uc.Update(context.Background(), tUpdateURL, *claims)
 		assert.Error(t, err, web.ErrNotFound)
+	})
+
+	t.Run("update url wrong user", func(t *testing.T) {
+		tURL.UserID = "wrong user"
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
+
+		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		assert.Error(t, web.ErrForbidden, err)
+	})
+
+	t.Run("update url wrong user, but admin", func(t *testing.T) {
+		tURL.UserID = "wrong user"
+		claims.Roles = append(claims.Roles, auth.RoleAdmin)
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
+		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		require.NoError(t, err)
+	})
+
+	t.Run("update url created by not authorized user", func(t *testing.T) {
+		tURL.UserID = ""
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
+
+		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		assert.Error(t, web.ErrForbidden, err)
 	})
 }
 

@@ -21,15 +21,6 @@ docker:
 run:
 	docker-compose up -d
 
-authkey:
-	go run ./cmd/admin/main.go keygen ./private.pem
-
-migrate:
-	go run ./cmd/admin/main.go migrate_mongo
-
-seed: migrate
-	go run ./cmd/admin/main.go seed
-
 stop:
 	docker-compose down
 
@@ -46,4 +37,19 @@ lint:
 		--enable=unconvert \
 		./...
 
-.PHONY: test engine unittest test-coverage clean docker run stop lint-prepare lint
+generate-mocks:
+	mockgen -source=./internal/url/repository.go -destination=./internal/url/mocks/Repository.go -package=mocks
+	mockgen -source=./internal/url/usecase.go -destination=./internal/url/mocks/Usecase.go -package=mocks
+	mockgen -source=./internal/user/repository.go -destination=./internal/user/mocks/Repository.go -package=mocks
+	mockgen -source=./internal/user/usecase.go -destination=./internal/user/mocks/Usecase.go -package=mocks
+
+authkey:
+	go run ./cmd/admin/main.go keygen ./private.pem
+
+migrate:
+	go run ./cmd/admin/main.go migrate_mongo
+
+seed: migrate
+	go run ./cmd/admin/main.go seed
+
+.PHONY: test engine unittest test-coverage clean docker run stop lint-prepare lint generate-mocks authkey migrate seed

@@ -53,6 +53,7 @@ func NewURL() *models.URL {
 		ID:             "test123",
 		Link:           "http://www.example.org",
 		ExpirationDate: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC(),
+		UserID:         "507f191e810c19729de860ea",
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}
@@ -64,6 +65,7 @@ func NewCreateURL() *models.CreateURL {
 		ID:             StringPointer("test123"),
 		Link:           "http://www.example.org",
 		ExpirationDate: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC(),
+		UserID:         "507f191e810c19729de860ea",
 	}
 }
 

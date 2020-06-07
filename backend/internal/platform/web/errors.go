@@ -21,6 +21,9 @@ var (
 	ErrBadParamInput = errors.New("Given Param is not valid")
 	// ErrAuthenticationFailure will throw if authentication goes wrong
 	ErrAuthenticationFailure = errors.New("Authentication failed")
+	// ErrForbidden will throw if user tries to do something that he is not
+	// authorized to do
+	ErrForbidden = errors.New("Attempted action is not allowed")
 )
 
 // ResponseError represent the reseponse error struct
