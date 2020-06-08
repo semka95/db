@@ -134,7 +134,6 @@ func TestURLUsecase_Update(t *testing.T) {
 	})
 
 	t.Run("update url success by wrong user, but admin", func(t *testing.T) {
-		claims.Subject = "wrong user"
 		claims.Roles = append(claims.Roles, auth.RoleAdmin)
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
@@ -160,16 +159,43 @@ func TestURLUsecase_Delete(t *testing.T) {
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewURLUsecase(repository, 10*time.Second)
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
 
 	t.Run("delete existing url", func(t *testing.T) {
 		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(nil)
-		err := uc.Delete(context.Background(), tURL.ID)
+		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
+		err := uc.Delete(context.Background(), tURL.ID, *claims)
 		require.NoError(t, err)
 	})
 
 	t.Run("delete not existing url", func(t *testing.T) {
-		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(web.ErrNotFound)
-		err := uc.Delete(context.Background(), tURL.ID)
+		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, web.ErrNotFound)
+		err := uc.Delete(context.Background(), tURL.ID, *claims)
 		assert.Error(t, err, web.ErrNotFound)
+	})
+
+	t.Run("delete url wrong user", func(t *testing.T) {
+		claims.Subject = "wrong user"
+		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
+
+		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		assert.Error(t, web.ErrForbidden, err)
+	})
+
+	t.Run("update url success by wrong user, but admin", func(t *testing.T) {
+		claims.Roles = append(claims.Roles, auth.RoleAdmin)
+		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
+		repository.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
+
+		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		require.NoError(t, err)
+	})
+
+	t.Run("update url created by not authorized user", func(t *testing.T) {
+		tURL.UserID = ""
+		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
+
+		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		assert.Error(t, web.ErrForbidden, err)
 	})
 }

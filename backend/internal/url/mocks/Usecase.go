@@ -80,15 +80,15 @@ func (mr *MockUsecaseMockRecorder) Store(ctx, createURL interface{}) *gomock.Cal
 }
 
 // Delete mocks base method
-func (m *MockUsecase) Delete(ctx context.Context, id string) error {
+func (m *MockUsecase) Delete(ctx context.Context, id string, user auth.Claims) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret := m.ctrl.Call(m, "Delete", ctx, id, user)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete
-func (mr *MockUsecaseMockRecorder) Delete(ctx, id interface{}) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) Delete(ctx, id, user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUsecase)(nil).Delete), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockUsecase)(nil).Delete), ctx, id, user)
 }

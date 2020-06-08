@@ -82,9 +82,22 @@ func (u *urlUsecase) Store(c context.Context, createURL *models.CreateURL) (*mod
 	return url, nil
 }
 
-func (u *urlUsecase) Delete(c context.Context, id string) error {
+func (u *urlUsecase) Delete(c context.Context, id string, user auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
+
+	url, err := u.urlRepo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("can't get %s user: %w", id, err)
+	}
+
+	if url.UserID == "" {
+		return fmt.Errorf("This url was created by unauthorized user: %w", web.ErrForbidden)
+	}
+
+	if !user.HasRole(auth.RoleAdmin) && url.UserID != user.Subject {
+		return web.ErrForbidden
+	}
 
 	return u.urlRepo.Delete(ctx, id)
 }

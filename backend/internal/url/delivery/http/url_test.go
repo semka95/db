@@ -303,13 +303,15 @@ func TestURLHttp_Store(t *testing.T) {
 
 func TestURLHttp_Delete(t *testing.T) {
 	tURL := tests.NewURL()
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
 	t.Run("delete url success", func(t *testing.T) {
-		uc.EXPECT().Delete(gomock.Any(), tURL.ID).Return(nil)
+		uc.EXPECT().Delete(gomock.Any(), tURL.ID, *claims).Return(nil)
 		e := echo.New()
 		req, err := http.NewRequest(echo.DELETE, "/delete/"+tURL.ID, nil)
 		require.NoError(t, err)
@@ -319,6 +321,7 @@ func TestURLHttp_Delete(t *testing.T) {
 		c.SetPath("/delete/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
+		c.Set("user", token)
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
@@ -332,8 +335,39 @@ func TestURLHttp_Delete(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	})
 
+	t.Run("delete url not authorized", func(t *testing.T) {
+		e := echo.New()
+
+		req, err := http.NewRequest(echo.DELETE, "/"+tURL.ID, nil)
+		require.NoError(t, err)
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/:id")
+		c.SetParamNames("id")
+		c.SetParamValues(tURL.ID)
+
+		handler := urlHttp.URLHandler{
+			URLUsecase: uc,
+			Validator:  new(urlHttp.URLValidator),
+		}
+		err = handler.InitValidation()
+		require.NoError(t, err)
+
+		err = handler.Delete(c)
+		require.NoError(t, err)
+
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+
+		assert.Equal(t, web.ErrForbidden.Error(), body.Error)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+
 	t.Run("delete not existing url", func(t *testing.T) {
-		uc.EXPECT().Delete(gomock.Any(), tURL.ID).Return(web.ErrNoAffected)
+		uc.EXPECT().Delete(gomock.Any(), tURL.ID, *claims).Return(web.ErrNoAffected)
 		e := echo.New()
 		req, err := http.NewRequest(echo.DELETE, "/delete/"+tURL.ID, nil)
 		require.NoError(t, err)
@@ -343,6 +377,7 @@ func TestURLHttp_Delete(t *testing.T) {
 		c.SetPath("/delete/:id")
 		c.SetParamNames("id")
 		c.SetParamValues(tURL.ID)
+		c.Set("user", token)
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
