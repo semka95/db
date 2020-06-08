@@ -87,7 +87,7 @@ func run(logger *zap.Logger) error {
 	// Create URL API
 	ur := _URLRepo.NewMongoURLRepository(client, cfg.MongoConfig.Name, logger)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
-	err = _URLHttpDelivery.NewURLHandler(e, uu, logger)
+	err = _URLHttpDelivery.NewURLHandler(e, uu, authenticator, logger)
 	if err != nil {
 		return fmt.Errorf("url handler creation failed: %w", err)
 	}

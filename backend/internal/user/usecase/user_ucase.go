@@ -38,13 +38,17 @@ func (u *userUsecase) GetByID(c context.Context, id string) (*models.User, error
 	return u.userRepo.GetByID(ctx, objID)
 }
 
-func (u *userUsecase) Update(c context.Context, updateUser *models.UpdateUser) error {
+func (u *userUsecase) Update(c context.Context, updateUser *models.UpdateUser, claims auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
 	defer cancel()
 
 	user, err := u.userRepo.GetByID(ctx, updateUser.ID)
 	if err != nil {
 		return fmt.Errorf("can't get %s user: %w", updateUser.ID.Hex(), err)
+	}
+
+	if !claims.HasRole(auth.RoleAdmin) && user.ID.Hex() != claims.Subject {
+		return web.ErrForbidden
 	}
 
 	if updateUser.FullName != nil {

@@ -13,6 +13,7 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -23,9 +24,10 @@ import (
 
 // URLHandler represent the httphandler for url
 type URLHandler struct {
-	URLUsecase url.Usecase
-	Validator  *URLValidator
-	logger     *zap.Logger
+	URLUsecase    url.Usecase
+	Authenticator *auth.Authenticator
+	Validator     *URLValidator
+	logger        *zap.Logger
 }
 
 // URLValidator represent validation struct for url
@@ -36,11 +38,12 @@ type URLValidator struct {
 }
 
 // NewURLHandler will initialize the url/ resources endpoint
-func NewURLHandler(e *echo.Echo, us url.Usecase, logger *zap.Logger) error {
+func NewURLHandler(e *echo.Echo, us url.Usecase, authenticator *auth.Authenticator, logger *zap.Logger) error {
 	handler := &URLHandler{
-		URLUsecase: us,
-		Validator:  new(URLValidator),
-		logger:     logger,
+		URLUsecase:    us,
+		Authenticator: authenticator,
+		Validator:     new(URLValidator),
+		logger:        logger,
 	}
 
 	err := handler.InitValidation()
@@ -51,8 +54,8 @@ func NewURLHandler(e *echo.Echo, us url.Usecase, logger *zap.Logger) error {
 
 	e.POST("/v1/url/create", handler.Store)
 	e.GET("/:id", handler.GetByID)
-	e.DELETE("/v1/url/:id", handler.Delete)
-	e.PUT("/v1/url/", handler.Update)
+	e.DELETE("/v1/url/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig))
+	e.PUT("/v1/url/", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
 
 	return nil
 }

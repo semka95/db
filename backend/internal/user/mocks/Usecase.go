@@ -52,17 +52,17 @@ func (mr *MockUsecaseMockRecorder) GetByID(ctx, id interface{}) *gomock.Call {
 }
 
 // Update mocks base method
-func (m *MockUsecase) Update(ctx context.Context, user *models.UpdateUser) error {
+func (m *MockUsecase) Update(ctx context.Context, user *models.UpdateUser, claims auth.Claims) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, user)
+	ret := m.ctrl.Call(m, "Update", ctx, user, claims)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update
-func (mr *MockUsecaseMockRecorder) Update(ctx, user interface{}) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) Update(ctx, user, claims interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUsecase)(nil).Update), ctx, user)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUsecase)(nil).Update), ctx, user, claims)
 }
 
 // Create mocks base method

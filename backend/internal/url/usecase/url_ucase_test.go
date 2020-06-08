@@ -126,15 +126,15 @@ func TestURLUsecase_Update(t *testing.T) {
 	})
 
 	t.Run("update url wrong user", func(t *testing.T) {
-		tURL.UserID = "wrong user"
+		claims.Subject = "wrong user"
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 
 		err := uc.Update(context.Background(), tUpdateURL, *claims)
 		assert.Error(t, web.ErrForbidden, err)
 	})
 
-	t.Run("update url wrong user, but admin", func(t *testing.T) {
-		tURL.UserID = "wrong user"
+	t.Run("update url success by wrong user, but admin", func(t *testing.T) {
+		claims.Subject = "wrong user"
 		claims.Roles = append(claims.Roles, auth.RoleAdmin)
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)

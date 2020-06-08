@@ -16,6 +16,7 @@ import (
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	userHttp "bitbucket.org/dbproject_ivt/db/backend/internal/user/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
+	"github.com/dgrijalva/jwt-go"
 	validator "github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
@@ -203,6 +204,36 @@ func TestUserHttp_Create(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
+
+	t.Run("create user bad request data", func(t *testing.T) {
+		e := echo.New()
+
+		b := []byte("wrong data")
+
+		req, err := http.NewRequest(echo.POST, "/user/create", bytes.NewBuffer(b))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/user/create")
+
+		handler := userHttp.UserHandler{
+			UserUsecase: uc,
+			Validator:   new(userHttp.UserValidator),
+		}
+
+		err = handler.Create(c)
+		require.NoError(t, err)
+
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+
+		assert.Contains(t, body.Error, "Syntax error")
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
 }
 
 func TestUserHttp_Delete(t *testing.T) {
@@ -269,17 +300,48 @@ func TestUserHttp_Delete(t *testing.T) {
 
 func TestUserHttp_Update(t *testing.T) {
 	tUpdateUser := tests.NewUpdateUser()
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
 	t.Run("update user success", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateUser).Return(nil)
+		uc.EXPECT().Update(gomock.Any(), tUpdateUser, *claims).Return(nil)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateUser)
 		require.NoError(t, err)
+		req, err := http.NewRequest(echo.PUT, "/user/", bytes.NewBuffer(b))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/user/")
+		c.Set("user", token)
+
+		handler := userHttp.UserHandler{
+			UserUsecase: uc,
+			Validator:   new(userHttp.UserValidator),
+		}
+		err = handler.InitValidation()
+		c.Echo().Validator = handler.Validator
+		require.NoError(t, err)
+
+		err = handler.Update(c)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+
+	t.Run("update user not authorized", func(t *testing.T) {
+		e := echo.New()
+
+		b, err := json.Marshal(tUpdateUser)
+		require.NoError(t, err)
+
 		req, err := http.NewRequest(echo.PUT, "/user/", bytes.NewBuffer(b))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
@@ -299,11 +361,17 @@ func TestUserHttp_Update(t *testing.T) {
 		err = handler.Update(c)
 		require.NoError(t, err)
 
-		assert.Equal(t, http.StatusNoContent, rec.Code)
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+
+		assert.Equal(t, web.ErrForbidden.Error(), body.Error)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
 	})
 
 	t.Run("update user not exist", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateUser).Return(web.ErrNoAffected)
+		uc.EXPECT().Update(gomock.Any(), tUpdateUser, *claims).Return(web.ErrNoAffected)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateUser)
@@ -316,6 +384,7 @@ func TestUserHttp_Update(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		c.SetPath("/user/")
+		c.Set("user", token)
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
@@ -368,6 +437,36 @@ func TestUserHttp_Update(t *testing.T) {
 
 		assert.Equal(t, "validation error", body.Error)
 		assert.Equal(t, "email must be a valid email address", body.Fields["UpdateUser.email"])
+
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("update user bad request data", func(t *testing.T) {
+		e := echo.New()
+
+		b := []byte("wrong data")
+
+		req, err := http.NewRequest(echo.PUT, "/user/", bytes.NewBuffer(b))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/user/")
+
+		handler := userHttp.UserHandler{
+			UserUsecase: uc,
+			Validator:   new(userHttp.UserValidator),
+		}
+
+		err = handler.Update(c)
+		require.NoError(t, err)
+
+		body := new(web.ResponseError)
+		err = json.NewDecoder(rec.Body).Decode(body)
+		require.NoError(t, err)
+
+		assert.Contains(t, body.Error, "Syntax error")
 
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})

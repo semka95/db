@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
@@ -54,7 +55,7 @@ func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authentic
 
 	myMiddl := _MyMiddleware.InitMiddleware(logger)
 
-	e.POST("/v1/user/create", handler.Create, middleware.JWTWithConfig(authenticator.JWTConfig))
+	e.POST("/v1/user/create", handler.Create)
 	e.GET("/v1/user/:id", handler.GetByID, middleware.JWTWithConfig(authenticator.JWTConfig))
 	e.GET("v1/user/token", handler.Token)
 	e.DELETE("/v1/user/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
@@ -166,12 +167,18 @@ func (u *UserHandler) Update(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
+	}
+	claims := token.Claims.(auth.Claims)
+
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	if err := u.UserUsecase.Update(ctx, user); err != nil {
+	if err := u.UserUsecase.Update(ctx, user, claims); err != nil {
 		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
 	}
 

@@ -55,10 +55,11 @@ func TestUserUsecase_Update(t *testing.T) {
 
 	repository := mocks.NewMockRepository(controller)
 	uc := usecase.NewUserUsecase(repository, 10*time.Second)
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
 
 	t.Run("update not existed user", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(nil, web.ErrNotFound)
-		err := uc.Update(context.Background(), tUpdateUser)
+		err := uc.Update(context.Background(), tUpdateUser, *claims)
 		assert.Error(t, err, web.ErrNotFound)
 	})
 
@@ -66,7 +67,7 @@ func TestUserUsecase_Update(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
 		repository.EXPECT().Update(gomock.Any(), tUser).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateUser)
+		err := uc.Update(context.Background(), tUpdateUser, *claims)
 		assert.NoError(t, err)
 
 		errP := bcrypt.CompareHashAndPassword([]byte(tUser.HashedPassword), []byte(*tUpdateUser.Password))
@@ -94,10 +95,28 @@ func TestUserUsecase_Update(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
 		repository.EXPECT().Update(gomock.Any(), tUser).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateUser)
+		err := uc.Update(context.Background(), tUpdateUser, *claims)
 		assert.NoError(t, err)
 
 		assert.EqualValues(t, tUserOld, tUser)
+	})
+
+	t.Run("update user wrong user", func(t *testing.T) {
+		claims.Subject = "wrong user"
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
+
+		err := uc.Update(context.Background(), tUpdateUser, *claims)
+		assert.Error(t, web.ErrForbidden, err)
+	})
+
+	t.Run("update user success by wrong user, but admin", func(t *testing.T) {
+		claims.Subject = "wrong user"
+		claims.Roles = append(claims.Roles, auth.RoleAdmin)
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
+		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+		err := uc.Update(context.Background(), tUpdateUser, *claims)
+		assert.NoError(t, err)
 	})
 }
 
