@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// StatusHandler represent the httphandler for status check
+// StatusHandler represent the http handler for status check
 type StatusHandler struct {
 	DB *mongo.Database
 }

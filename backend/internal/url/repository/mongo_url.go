@@ -30,13 +30,13 @@ func NewMongoURLRepository(c *mongo.Client, db string, logger *zap.Logger) url.R
 func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]*models.URL, error) {
 	cur, err := m.Conn.RunCommandCursor(ctx, command)
 	if err != nil {
-		return nil, fmt.Errorf("Can't execute command: %w", err)
+		return nil, fmt.Errorf("can't execute command: %w", err)
 	}
 
 	defer func(ctx context.Context) {
 		err := cur.Close(ctx)
 		if err != nil {
-			m.logger.Error("Can't close cursor: ", zap.Error(err))
+			m.logger.Error("can't close cursor: ", zap.Error(err))
 		}
 	}(ctx)
 
@@ -45,7 +45,7 @@ func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]
 	for cur.Next(ctx) {
 		elem := new(models.URL)
 		if err := cur.Decode(elem); err != nil {
-			return nil, fmt.Errorf("Can't unmarshal document into URL: %w", err)
+			return nil, fmt.Errorf("can't unmarshal document into URL: %w", err)
 		}
 
 		result = append(result, elem)
@@ -109,7 +109,7 @@ func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error 
 
 	doc, err := toDoc(&url)
 	if err != nil {
-		return fmt.Errorf("Can't convert URL to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
+		return fmt.Errorf("can't convert URL to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
 	}
 	update := bson.D{primitive.E{Key: "$set", Value: doc}}
 

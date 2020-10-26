@@ -32,8 +32,8 @@ func TestMongoURLRepository_GetByID(t *testing.T) {
 	tURL := tests.NewURL()
 
 	mt.Run("get url not exist", func(mt *mtest.T) {
-		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByID(mtest.Background, "none")
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := r.GetByID(mtest.Background, "none")
 		assert.Nil(mt, result)
 		require.Error(mt, err, web.ErrNotFound)
 	})
@@ -42,8 +42,8 @@ func TestMongoURLRepository_GetByID(t *testing.T) {
 		_, err := mt.Coll.InsertOne(mtest.Background, tURL)
 		require.NoError(mt, err)
 
-		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByID(mtest.Background, tURL.ID)
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := r.GetByID(mtest.Background, tURL.ID)
 		require.NoError(mt, err)
 		assert.EqualValues(t, tURL, result)
 	})
@@ -55,8 +55,8 @@ func TestMongoURLRepository_Store(t *testing.T) {
 	tURL := tests.NewURL()
 
 	mt.RunOpts("store url success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
-		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Store(mtest.Background, tURL)
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
+		err := r.Store(mtest.Background, tURL)
 		require.NoError(mt, err)
 
 		result := &models.URL{}
@@ -72,17 +72,17 @@ func TestMongoURLRepository_Delete(t *testing.T) {
 	tURL := tests.NewURL()
 
 	mt.RunOpts("delete not existing url", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
-		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Delete(mtest.Background, "none")
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
+		err := r.Delete(mtest.Background, "none")
 		require.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("delete url success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
 		_, err := mt.Coll.InsertOne(mtest.Background, tURL)
 		require.NoError(mt, err)
-		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
 
-		err = repository.Delete(mtest.Background, tURL.ID)
+		err = r.Delete(mtest.Background, tURL.ID)
 		require.NoError(mt, err)
 	})
 }
@@ -93,18 +93,18 @@ func TestMongoURLRepository_Update(t *testing.T) {
 	tURL := tests.NewURL()
 
 	mt.RunOpts("update not existing url", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
-		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Update(mtest.Background, tURL)
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
+		err := r.Update(mtest.Background, tURL)
 		require.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("update url success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
 		_, err := mt.Coll.InsertOne(mtest.Background, tURL)
 		require.NoError(mt, err)
-		repository := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil)
 
 		tURL.Link = "https://www.google.com"
-		err = repository.Update(mtest.Background, tURL)
+		err = r.Update(mtest.Background, tURL)
 		require.NoError(mt, err)
 
 		result := &models.URL{}

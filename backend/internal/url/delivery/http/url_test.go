@@ -15,7 +15,7 @@ import (
 	urlHttp "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
 	"github.com/dgrijalva/jwt-go"
-	validator "github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"

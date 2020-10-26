@@ -10,8 +10,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
-	validator "github.com/go-playground/validator/v10"
-	en_translations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/go-playground/validator/v10"
+	enTranslations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
@@ -23,7 +23,7 @@ import (
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user"
 )
 
-// UserHandler represent the httphandler for user
+// UserHandler represent the http handler for user
 type UserHandler struct {
 	UserUsecase   user.Usecase
 	Authenticator *auth.Authenticator
@@ -70,23 +70,23 @@ func (uv *UserValidator) Validate(i interface{}) error {
 }
 
 // InitValidation will initialize validation for user handler
-func (u *UserHandler) InitValidation() error {
-	en := en.New()
-	u.Validator.Uni = ut.New(en, en)
+func (uh *UserHandler) InitValidation() error {
+	translator := en.New()
+	uh.Validator.Uni = ut.New(translator, translator)
 	var found bool
-	u.Validator.Trans, found = u.Validator.Uni.GetTranslator("en")
+	uh.Validator.Trans, found = uh.Validator.Uni.GetTranslator("en")
 	if !found {
-		u.Validator.Trans = u.Validator.Uni.GetFallback()
+		uh.Validator.Trans = uh.Validator.Uni.GetFallback()
 	}
 
-	u.Validator.V = validator.New()
+	uh.Validator.V = validator.New()
 
-	err := en_translations.RegisterDefaultTranslations(u.Validator.V, u.Validator.Trans)
+	err := enTranslations.RegisterDefaultTranslations(uh.Validator.V, uh.Validator.Trans)
 	if err != nil {
 		return err
 	}
 
-	u.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
+	uh.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 		if name == "-" {
 			return ""
@@ -98,7 +98,7 @@ func (u *UserHandler) InitValidation() error {
 }
 
 // GetByID will get user by given id
-func (u *UserHandler) GetByID(c echo.Context) error {
+func (uh *UserHandler) GetByID(c echo.Context) error {
 	id := c.Param("id")
 
 	ctx := c.Request().Context()
@@ -106,23 +106,23 @@ func (u *UserHandler) GetByID(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	user, err := u.UserUsecase.GetByID(ctx, id)
+	u, err := uh.UserUsecase.GetByID(ctx, id)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, user)
+	return c.JSON(http.StatusOK, u)
 }
 
 // Create will store the User by given request body
-func (u *UserHandler) Create(c echo.Context) error {
+func (uh *UserHandler) Create(c echo.Context) error {
 	newUser := new(models.CreateUser)
 	if err := c.Bind(newUser); err != nil {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(newUser); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -131,16 +131,16 @@ func (u *UserHandler) Create(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	user, err := u.UserUsecase.Create(ctx, newUser)
+	u, err := uh.UserUsecase.Create(ctx, newUser)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 
-	return c.JSON(http.StatusCreated, user)
+	return c.JSON(http.StatusCreated, u)
 }
 
 // Delete will delete User by given id
-func (u *UserHandler) Delete(c echo.Context) error {
+func (uh *UserHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
 
 	ctx := c.Request().Context()
@@ -148,22 +148,22 @@ func (u *UserHandler) Delete(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	if err := u.UserUsecase.Delete(ctx, id); err != nil {
-		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+	if err := uh.UserUsecase.Delete(ctx, id); err != nil {
+		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
 }
 
 // Update will update the User by given request body
-func (u *UserHandler) Update(c echo.Context) error {
-	user := new(models.UpdateUser)
-	if err := c.Bind(user); err != nil {
+func (uh *UserHandler) Update(c echo.Context) error {
+	u := new(models.UpdateUser)
+	if err := c.Bind(u); err != nil {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
-	if err := c.Validate(user); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+	if err := c.Validate(u); err != nil {
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -178,15 +178,15 @@ func (u *UserHandler) Update(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	if err := u.UserUsecase.Update(ctx, user, claims); err != nil {
-		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+	if err := uh.UserUsecase.Update(ctx, u, claims); err != nil {
+		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
 }
 
 // Token will return jwt token by given credentials
-func (u *UserHandler) Token(c echo.Context) error {
+func (uh *UserHandler) Token(c echo.Context) error {
 	email, pass, ok := c.Request().BasicAuth()
 	if !ok {
 		return c.JSON(http.StatusUnauthorized, web.ResponseError{Error: "can't get email and password using Basic auth"})
@@ -197,17 +197,17 @@ func (u *UserHandler) Token(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	claims, err := u.UserUsecase.Authenticate(ctx, time.Now(), email, pass)
+	claims, err := uh.UserUsecase.Authenticate(ctx, time.Now(), email, pass)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 
 	var tkn struct {
 		Token string `json:"token"`
 	}
-	tkn.Token, err = u.Authenticator.GenerateToken(claims)
+	tkn.Token, err = uh.Authenticator.GenerateToken(claims)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, u.Logger), web.ResponseError{Error: err.Error()})
+		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, tkn)

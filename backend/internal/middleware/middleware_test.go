@@ -19,7 +19,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	middl "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
+	_mid "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 )
 
@@ -28,11 +28,11 @@ func TestCORS(t *testing.T) {
 	req := httptest.NewRequest(echo.GET, "/", nil)
 	res := httptest.NewRecorder()
 	c := e.NewContext(req, res)
-	m := middl.InitMiddleware(nil)
+	m := _mid.InitMiddleware(nil)
 
-	h := m.CORS(echo.HandlerFunc(func(c echo.Context) error {
+	h := m.CORS(func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
-	}))
+	})
 
 	err := h(c)
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestLogger(t *testing.T) {
 		}
 	}()
 
-	m := middl.InitMiddleware(logger)
+	m := _mid.InitMiddleware(logger)
 
 	cases := []struct {
 		Description string
@@ -78,7 +78,7 @@ func TestLogger(t *testing.T) {
 		{
 			"test server error",
 			echo.HandlerFunc(func(c echo.Context) error {
-				return c.NoContent(http.StatusInternalServerError)
+				return errors.New("test error")
 			}),
 			loggerJSON{Level: "ERROR", Message: "Server error", Status: 500, Method: "GET", URI: "/"},
 		},
@@ -118,25 +118,6 @@ func TestLogger(t *testing.T) {
 			l.Reset()
 		})
 	}
-
-	t.Run("test error handler", func(t *testing.T) {
-		e := echo.New()
-		req := httptest.NewRequest(echo.GET, "/", nil)
-		res := httptest.NewRecorder()
-		c := e.NewContext(req, res)
-
-		h := m.Logger(echo.HandlerFunc(func(c echo.Context) error {
-			return errors.New("test error")
-		}))
-
-		err := h(c)
-		require.NoError(t, err)
-		got := make(map[string]string)
-		err = json.Unmarshal(res.Body.Bytes(), &got)
-		require.NoError(t, err)
-
-		assert.Equal(t, got["message"], "Internal Server Error")
-	})
 }
 
 func TestJWT(t *testing.T) {
@@ -152,77 +133,67 @@ func TestJWT(t *testing.T) {
 	token, err := authenticator.GenerateToken(claims)
 	require.NoError(t, err)
 
-	t.Run("auth success", func(t *testing.T) {
-		e := echo.New()
-		req := httptest.NewRequest(echo.GET, "/", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
-		res := httptest.NewRecorder()
-		c := e.NewContext(req, res)
-		m := middleware.JWTWithConfig(authenticator.JWTConfig)
+	expClaims := auth.NewClaims("test user", []string{auth.RoleUser}, time.Now().Add(-time.Hour), time.Minute)
+	expToken, err := authenticator.GenerateToken(expClaims)
+	require.NoError(t, err)
 
-		h := m(echo.HandlerFunc(func(c echo.Context) error {
-			return c.NoContent(http.StatusOK)
-		}))
+	cases := []struct {
+		Description string
+		Token       string
+		Code        int
+		Message     string
+		Success     bool
+	}{
+		{
+			"auth success",
+			token,
+			0,
+			"",
+			true,
+		},
+		{
+			"auth token expired",
+			expToken,
+			http.StatusUnauthorized,
+			"invalid or expired jwt",
+			false,
+		},
+		{
+			"auth token not provided",
+			"",
+			http.StatusBadRequest,
+			"missing or malformed jwt",
+			false,
+		},
+	}
 
-		err = h(c)
-		require.NoError(t, err)
-	})
+	for _, test := range cases {
+		t.Run(test.Description, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(echo.GET, "/", nil)
+			req.Header.Set("Authorization", "Bearer "+test.Token)
+			res := httptest.NewRecorder()
+			c := e.NewContext(req, res)
+			m := middleware.JWTWithConfig(authenticator.JWTConfig)
 
-	t.Run("auth token expired", func(t *testing.T) {
-		expClaims := auth.NewClaims("test user", []string{auth.RoleUser}, time.Now().Add(-time.Hour), time.Minute)
-		expToken, err := authenticator.GenerateToken(expClaims)
-		require.NoError(t, err)
+			h := m(func(c echo.Context) error {
+				return c.NoContent(http.StatusOK)
+			})
 
-		e := echo.New()
-		req := httptest.NewRequest(echo.GET, "/", nil)
-		req.Header.Set("Authorization", "Bearer "+expToken)
-		res := httptest.NewRecorder()
-		c := e.NewContext(req, res)
-		m := middleware.JWTWithConfig(authenticator.JWTConfig)
+			err = h(c)
+			if test.Success {
+				require.NoError(t, err)
+				return
+			}
 
-		h := m(echo.HandlerFunc(func(c echo.Context) error {
-			return c.NoContent(http.StatusOK)
-		}))
-
-		err = h(c)
-		assert.Contains(t, err.Error(), "token is expired")
-	})
-
-	t.Run("auth token not provided", func(t *testing.T) {
-		e := echo.New()
-		req := httptest.NewRequest(echo.GET, "/", nil)
-		res := httptest.NewRecorder()
-		c := e.NewContext(req, res)
-		m := middleware.JWTWithConfig(authenticator.JWTConfig)
-
-		h := m(echo.HandlerFunc(func(c echo.Context) error {
-			return c.NoContent(http.StatusOK)
-		}))
-
-		err = h(c)
-		var herr *echo.HTTPError
-		if !errors.As(err, &herr) {
-			t.Error("error is not type of echo.HTTPError")
-		}
-		assert.EqualValues(t, herr.Message, "missing or malformed jwt")
-	})
-
-	t.Run("auth wrong signature", func(t *testing.T) {
-		fakeToken := "eyJhbGciOiJSUzI1NiIsImtpZCI6IjQ3NTRkODZiLTdhNmQtNGRmNS05YzY1LTIyNDc0MTM2MTQ5MiIsInR5cCI6IkpXVCJ9.eyJSb2xlcyI6WyJVU0VSIl0sImV4cCI6MTU5MTMwMTc2NywiaWF0IjoxNTkxMzAxNzA3LCJzdWIiOiJ0ZXN0IHVzZXIifQ.eyfake"
-		e := echo.New()
-		req := httptest.NewRequest(echo.GET, "/", nil)
-		req.Header.Set("Authorization", "Bearer "+fakeToken)
-		res := httptest.NewRecorder()
-		c := e.NewContext(req, res)
-		m := middleware.JWTWithConfig(authenticator.JWTConfig)
-
-		h := m(echo.HandlerFunc(func(c echo.Context) error {
-			return c.NoContent(http.StatusOK)
-		}))
-
-		err = h(c)
-		assert.Contains(t, err.Error(), "verification error")
-	})
+			var he *echo.HTTPError
+			if !errors.As(err, &he) {
+				t.Error("error is not type of echo.HTTPError")
+			}
+			assert.Equal(t, test.Code, he.Code)
+			assert.Equal(t, test.Message, he.Message)
+		})
+	}
 }
 
 func TestHasRole(t *testing.T) {
@@ -236,10 +207,10 @@ func TestHasRole(t *testing.T) {
 		c := e.NewContext(req, res)
 		c.Set("user", token)
 
-		m := middl.InitMiddleware(nil).HasRole(auth.RoleUser)
-		h := m(echo.HandlerFunc(func(c echo.Context) error {
+		m := _mid.InitMiddleware(nil).HasRole(auth.RoleUser)
+		h := m(func(c echo.Context) error {
 			return c.NoContent(http.StatusOK)
-		}))
+		})
 
 		err := h(c)
 		require.NoError(t, err)
@@ -252,10 +223,10 @@ func TestHasRole(t *testing.T) {
 		c := e.NewContext(req, res)
 		c.Set("user", token)
 
-		m := middl.InitMiddleware(nil).HasRole(auth.RoleAdmin)
-		h := m(echo.HandlerFunc(func(c echo.Context) error {
+		m := _mid.InitMiddleware(nil).HasRole(auth.RoleAdmin)
+		h := m(func(c echo.Context) error {
 			return c.NoContent(http.StatusOK)
-		}))
+		})
 
 		err := h(c)
 		var herr *echo.HTTPError

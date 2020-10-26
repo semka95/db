@@ -30,7 +30,7 @@ func NewMongoUserRepository(c *mongo.Client, db string, logger *zap.Logger) user
 func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([]*models.User, error) {
 	cur, err := m.Conn.RunCommandCursor(ctx, command)
 	if err != nil {
-		return nil, fmt.Errorf("Can't execute command: %w", err)
+		return nil, fmt.Errorf("can't execute command: %w", err)
 	}
 
 	defer func(ctx context.Context) {
@@ -45,14 +45,14 @@ func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([
 	for cur.Next(ctx) {
 		elem := new(models.User)
 		if err := cur.Decode(elem); err != nil {
-			return nil, fmt.Errorf("Can't unmarshal document into User: %w", err)
+			return nil, fmt.Errorf("can't unmarshal document into User: %w", err)
 		}
 
 		result = append(result, elem)
 	}
 
 	if err = cur.Err(); err != nil {
-		return nil, fmt.Errorf("User cursor error: %w", err)
+		return nil, fmt.Errorf("user cursor error: %w", err)
 	}
 
 	return result, nil
@@ -67,11 +67,11 @@ func (m *mongoUserRepository) GetByID(ctx context.Context, id primitive.ObjectID
 
 	list, err := m.fetch(ctx, command)
 	if err != nil {
-		return nil, fmt.Errorf("User get error: %w: %s", web.ErrInternalServerError, err.Error())
+		return nil, fmt.Errorf("user get error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if len(list) == 0 {
-		return nil, fmt.Errorf("User was not found: %w", web.ErrNotFound)
+		return nil, fmt.Errorf("user was not found: %w", web.ErrNotFound)
 	}
 
 	return list[0], nil
@@ -80,7 +80,7 @@ func (m *mongoUserRepository) GetByID(ctx context.Context, id primitive.ObjectID
 func (m *mongoUserRepository) Create(ctx context.Context, user *models.User) error {
 	_, err := m.Conn.Collection("user").InsertOne(ctx, user)
 	if err != nil {
-		return fmt.Errorf("User store error: %w: %s", web.ErrInternalServerError, err.Error())
+		return fmt.Errorf("user store error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	return nil
@@ -93,11 +93,11 @@ func (m *mongoUserRepository) Delete(ctx context.Context, id primitive.ObjectID)
 
 	delRes, err := m.Conn.Collection("user").DeleteOne(ctx, filter)
 	if err != nil {
-		return fmt.Errorf("User delete error: %w: %s", web.ErrInternalServerError, err.Error())
+		return fmt.Errorf("user delete error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if delRes.DeletedCount == 0 {
-		return fmt.Errorf("User was not deleted: %w", web.ErrNoAffected)
+		return fmt.Errorf("user was not deleted: %w", web.ErrNoAffected)
 	}
 
 	return nil
@@ -109,17 +109,17 @@ func (m *mongoUserRepository) Update(ctx context.Context, user *models.User) err
 
 	doc, err := toDoc(&user)
 	if err != nil {
-		return fmt.Errorf("Can't convert User to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
+		return fmt.Errorf("can't convert User to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
 	}
 	update := bson.D{primitive.E{Key: "$set", Value: doc}}
 
 	updRes, err := m.Conn.Collection("user").UpdateOne(ctx, filter, update)
 	if err != nil {
-		return fmt.Errorf("User update error: %w: %s", web.ErrInternalServerError, err.Error())
+		return fmt.Errorf("user update error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if updRes.ModifiedCount == 0 {
-		return fmt.Errorf("User was not updated: %w", web.ErrNoAffected)
+		return fmt.Errorf("user was not updated: %w", web.ErrNoAffected)
 	}
 
 	return nil
@@ -144,11 +144,11 @@ func (m *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*mo
 
 	list, err := m.fetch(ctx, command)
 	if err != nil {
-		return nil, fmt.Errorf("User get error: %w: %s", web.ErrInternalServerError, err.Error())
+		return nil, fmt.Errorf("user get error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if len(list) == 0 {
-		return nil, fmt.Errorf("User with email %s was not found: %w", email, web.ErrNotFound)
+		return nil, fmt.Errorf("user with email %s was not found: %w", email, web.ErrNotFound)
 	}
 
 	return list[0], nil

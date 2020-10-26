@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -16,7 +16,7 @@ type GoMiddleware struct {
 	logger *zap.Logger
 }
 
-// InitMiddleware intialize the middleware
+// InitMiddleware initialize the middleware
 func InitMiddleware(logger *zap.Logger) *GoMiddleware {
 	return &GoMiddleware{
 		logger: logger,

@@ -26,46 +26,46 @@ func NewURLUsecase(u url.Repository, timeout time.Duration) url.Usecase {
 	}
 }
 
-func (u *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) {
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+func (uc *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) {
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	return u.urlRepo.GetByID(ctx, id)
+	return uc.urlRepo.GetByID(ctx, id)
 }
 
-func (u *urlUsecase) Update(c context.Context, updateURL *models.UpdateURL, user auth.Claims) error {
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+func (uc *urlUsecase) Update(c context.Context, updateURL *models.UpdateURL, user auth.Claims) error {
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	url, err := u.urlRepo.GetByID(ctx, updateURL.ID)
+	u, err := uc.urlRepo.GetByID(ctx, updateURL.ID)
 	if err != nil {
 		return fmt.Errorf("can't get %s user: %w", updateURL.ID, err)
 	}
 
-	if url.UserID == "" {
-		return fmt.Errorf("This url was created by unauthorized user: %w", web.ErrForbidden)
+	if u.UserID == "" {
+		return fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
 	}
 
-	if !user.HasRole(auth.RoleAdmin) && url.UserID != user.Subject {
+	if !user.HasRole(auth.RoleAdmin) && u.UserID != user.Subject {
 		return web.ErrForbidden
 	}
 
-	url.ExpirationDate = updateURL.ExpirationDate
-	url.UpdatedAt = time.Now().Truncate(time.Millisecond).UTC()
+	u.ExpirationDate = updateURL.ExpirationDate
+	u.UpdatedAt = time.Now().Truncate(time.Millisecond).UTC()
 
-	return u.urlRepo.Update(ctx, url)
+	return uc.urlRepo.Update(ctx, u)
 }
 
-func (u *urlUsecase) Store(c context.Context, createURL *models.CreateURL) (*models.URL, error) {
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+func (uc *urlUsecase) Store(c context.Context, createURL *models.CreateURL) (*models.URL, error) {
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	id, err := u.getURLToken(ctx, createURL.ID)
+	id, err := uc.getURLToken(ctx, createURL.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	url := &models.URL{
+	u := &models.URL{
 		ID:             id,
 		Link:           createURL.Link,
 		ExpirationDate: createURL.ExpirationDate,
@@ -74,41 +74,41 @@ func (u *urlUsecase) Store(c context.Context, createURL *models.CreateURL) (*mod
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}
 
-	err = u.urlRepo.Store(ctx, url)
+	err = uc.urlRepo.Store(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 
-	return url, nil
+	return u, nil
 }
 
-func (u *urlUsecase) Delete(c context.Context, id string, user auth.Claims) error {
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+func (uc *urlUsecase) Delete(c context.Context, id string, user auth.Claims) error {
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	url, err := u.urlRepo.GetByID(ctx, id)
+	u, err := uc.urlRepo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("can't get %s user: %w", id, err)
 	}
 
-	if url.UserID == "" {
-		return fmt.Errorf("This url was created by unauthorized user: %w", web.ErrForbidden)
+	if u.UserID == "" {
+		return fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
 	}
 
-	if !user.HasRole(auth.RoleAdmin) && url.UserID != user.Subject {
+	if !user.HasRole(auth.RoleAdmin) && u.UserID != user.Subject {
 		return web.ErrForbidden
 	}
 
-	return u.urlRepo.Delete(ctx, id)
+	return uc.urlRepo.Delete(ctx, id)
 }
 
-func (u *urlUsecase) getURLToken(ctx context.Context, createID *string) (id string, err error) {
+func (uc *urlUsecase) getURLToken(ctx context.Context, createID *string) (id string, err error) {
 	if createID == nil {
 		for {
 			src := rand.NewSource(time.Now().UnixNano())
 			id = gen.GenerateURLToken(6, src)
 
-			_, err = u.GetByID(ctx, id)
+			_, err = uc.GetByID(ctx, id)
 			if err != nil {
 				break
 			}
@@ -116,7 +116,7 @@ func (u *urlUsecase) getURLToken(ctx context.Context, createID *string) (id stri
 	}
 
 	if createID != nil {
-		_, err := u.GetByID(ctx, *createID)
+		_, err := uc.GetByID(ctx, *createID)
 		if err == nil {
 			return "", fmt.Errorf("can't store URL, already exists: %w", web.ErrConflict)
 		}

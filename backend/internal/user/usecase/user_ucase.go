@@ -26,37 +26,37 @@ func NewUserUsecase(u user.Repository, timeout time.Duration) user.Usecase {
 	}
 }
 
-func (u *userUsecase) GetByID(c context.Context, id string) (*models.User, error) {
+func (uc *userUsecase) GetByID(c context.Context, id string) (*models.User, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	return u.userRepo.GetByID(ctx, objID)
+	return uc.userRepo.GetByID(ctx, objID)
 }
 
-func (u *userUsecase) Update(c context.Context, updateUser *models.UpdateUser, claims auth.Claims) error {
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+func (uc *userUsecase) Update(c context.Context, updateUser *models.UpdateUser, claims auth.Claims) error {
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	user, err := u.userRepo.GetByID(ctx, updateUser.ID)
+	u, err := uc.userRepo.GetByID(ctx, updateUser.ID)
 	if err != nil {
 		return fmt.Errorf("can't get %s user: %w", updateUser.ID.Hex(), err)
 	}
 
-	if !claims.HasRole(auth.RoleAdmin) && user.ID.Hex() != claims.Subject {
+	if !claims.HasRole(auth.RoleAdmin) && u.ID.Hex() != claims.Subject {
 		return web.ErrForbidden
 	}
 
 	if updateUser.FullName != nil {
-		user.FullName = *updateUser.FullName
+		u.FullName = *updateUser.FullName
 	}
 
 	if updateUser.Email != nil {
-		user.Email = *updateUser.Email
+		u.Email = *updateUser.Email
 	}
 
 	if updateUser.Password != nil {
@@ -64,21 +64,21 @@ func (u *userUsecase) Update(c context.Context, updateUser *models.UpdateUser, c
 		if err != nil {
 			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.Password, web.ErrInternalServerError, err.Error())
 		}
-		user.HashedPassword = hashedPwd
+		u.HashedPassword = hashedPwd
 	}
 
-	user.UpdatedAt = time.Now().Truncate(time.Millisecond).UTC()
+	u.UpdatedAt = time.Now().Truncate(time.Millisecond).UTC()
 
-	return u.userRepo.Update(ctx, user)
+	return uc.userRepo.Update(ctx, u)
 }
 
-func (u *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.User, error) {
+func (uc *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.User, error) {
 	hashedPwd, err := generateHash(m.Password)
 	if err != nil {
 		return nil, fmt.Errorf("can't generate hash from this password - %s: %w: %s", m.Password, web.ErrInternalServerError, err.Error())
 	}
 
-	user := &models.User{
+	u := &models.User{
 		ID:             primitive.NewObjectID(),
 		FullName:       m.FullName,
 		Email:          m.Email,
@@ -88,43 +88,43 @@ func (u *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.U
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}
 
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	err = u.userRepo.Create(ctx, user)
+	err = uc.userRepo.Create(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return u, nil
 }
 
-func (u *userUsecase) Delete(c context.Context, id string) error {
+func (uc *userUsecase) Delete(c context.Context, id string) error {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	return u.userRepo.Delete(ctx, objID)
+	return uc.userRepo.Delete(ctx, objID)
 }
 
-func (u *userUsecase) Authenticate(c context.Context, now time.Time, email, password string) (*auth.Claims, error) {
-	ctx, cancel := context.WithTimeout(c, u.contextTimeout)
+func (uc *userUsecase) Authenticate(c context.Context, now time.Time, email, password string) (*auth.Claims, error) {
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
-	user, err := u.userRepo.GetByEmail(ctx, email)
+	u, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(password)); err != nil {
-		return nil, fmt.Errorf("Compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
+	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password)); err != nil {
+		return nil, fmt.Errorf("compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 
-	claims := auth.NewClaims(user.ID.Hex(), user.Roles, now, time.Hour)
+	claims := auth.NewClaims(u.ID.Hex(), u.Roles, now, time.Hour)
 	return claims, nil
 }
 

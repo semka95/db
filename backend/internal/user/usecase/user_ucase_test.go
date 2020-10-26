@@ -98,6 +98,8 @@ func TestUserUsecase_Update(t *testing.T) {
 		err := uc.Update(context.Background(), tUpdateUser, *claims)
 		assert.NoError(t, err)
 
+		assert.WithinDuration(t, tUserOld.UpdatedAt, tUser.UpdatedAt, 10*time.Second)
+		tUserOld.UpdatedAt = tUser.UpdatedAt
 		assert.EqualValues(t, tUserOld, tUser)
 	})
 

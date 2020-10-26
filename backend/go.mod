@@ -1,26 +1,35 @@
 module bitbucket.org/dbproject_ivt/db/backend
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5 // indirect
+	github.com/aws/aws-sdk-go v1.35.14 // indirect
+	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/locales v0.13.0
 	github.com/go-playground/universal-translator v0.17.0
-	github.com/go-playground/validator/v10 v10.3.0
-	github.com/golang-migrate/migrate/v4 v4.11.0
-	github.com/golang/mock v1.4.3
-	github.com/golang/protobuf v1.3.5 // indirect
-	github.com/klauspost/compress v1.10.3 // indirect
-	github.com/labstack/echo/v4 v4.1.16
+	github.com/go-playground/validator/v10 v10.4.1
+	github.com/golang-migrate/migrate/v4 v4.13.0
+	github.com/golang/mock v1.4.4
+	github.com/golang/snappy v0.0.2 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/klauspost/compress v1.11.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/labstack/echo/v4 v4.1.17
+	github.com/mattn/go-colorable v0.1.8 // indirect
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/stretchr/testify v1.6.1
-	go.mongodb.org/mongo-driver v1.3.4
-	go.uber.org/zap v1.15.0
-	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
-	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e // indirect
-	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
-	golang.org/x/sys v0.0.0-20200327173247-9dae0f8f5775 // indirect
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	go.mongodb.org/mongo-driver v1.4.2
+	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/zap v1.16.0
+	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
+	golang.org/x/net v0.0.0-20201024042810-be3efd7ff127 // indirect
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
+	golang.org/x/sys v0.0.0-20201024232916-9f70ab9862d5 // indirect
+	golang.org/x/tools v0.0.0-20201013201025-64a9e34f3752 // indirect
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.3.0
+	honnef.co/go/tools v0.0.1-2020.1.6 // indirect
 )

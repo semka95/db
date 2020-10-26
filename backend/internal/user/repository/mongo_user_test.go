@@ -32,8 +32,8 @@ func TestMongoUserRepository_GetByID(t *testing.T) {
 	tUser := tests.NewUser()
 
 	mt.RunOpts("get user not exist", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByID(mtest.Background, tUser.ID)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := r.GetByID(mtest.Background, tUser.ID)
 		assert.Nil(mt, result)
 		assert.Error(mt, err, web.ErrNotFound)
 	})
@@ -42,8 +42,8 @@ func TestMongoUserRepository_GetByID(t *testing.T) {
 		_, err := mt.Coll.InsertOne(mtest.Background, tUser)
 		assert.NoError(mt, err)
 
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByID(mtest.Background, tUser.ID)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := r.GetByID(mtest.Background, tUser.ID)
 		assert.NoError(mt, err)
 		assert.EqualValues(t, tUser, result)
 	})
@@ -55,8 +55,8 @@ func TestMongoUserRepository_Create(t *testing.T) {
 	tUser := tests.NewUser()
 
 	mt.RunOpts("create user success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Create(mtest.Background, tUser)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		err := r.Create(mtest.Background, tUser)
 		require.NoError(mt, err)
 
 		result := &models.User{}
@@ -72,17 +72,17 @@ func TestMongoUserRepository_Delete(t *testing.T) {
 	tUser := tests.NewUser()
 
 	mt.RunOpts("delete not existing user", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Delete(mtest.Background, tUser.ID)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		err := r.Delete(mtest.Background, tUser.ID)
 		assert.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("delete success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		_, err := mt.Coll.InsertOne(mtest.Background, tUser)
 		require.NoError(mt, err)
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
 
-		err = repository.Delete(mtest.Background, tUser.ID)
+		err = r.Delete(mtest.Background, tUser.ID)
 		require.NoError(mt, err)
 	})
 }
@@ -93,19 +93,19 @@ func TestMongoUserRepository_Update(t *testing.T) {
 	tUser := tests.NewUser()
 
 	mt.RunOpts("update not existing user", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		err := repository.Update(mtest.Background, tUser)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		err := r.Update(mtest.Background, tUser)
 		assert.Error(mt, err, web.ErrNoAffected)
 	})
 
 	mt.RunOpts("update user success", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
 		_, err := mt.Coll.InsertOne(mtest.Background, tUser)
 		require.NoError(mt, err)
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
 
 		tUser.FullName = "Test User"
 		tUser.Email = "123@test.org"
-		err = repository.Update(mtest.Background, tUser)
+		err = r.Update(mtest.Background, tUser)
 		require.NoError(mt, err)
 
 		result := &models.User{}
@@ -121,8 +121,8 @@ func TestMongoUserRepository_GetByEmail(t *testing.T) {
 	tUser := tests.NewUser()
 
 	mt.RunOpts("get user not exist", mtest.NewOptions().CollectionName("user"), func(mt *mtest.T) {
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByEmail(mtest.Background, tUser.Email)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := r.GetByEmail(mtest.Background, tUser.Email)
 		assert.Nil(mt, result)
 		assert.Error(mt, err, web.ErrNotFound)
 	})
@@ -131,8 +131,8 @@ func TestMongoUserRepository_GetByEmail(t *testing.T) {
 		_, err := mt.Coll.InsertOne(mtest.Background, tUser)
 		assert.NoError(mt, err)
 
-		repository := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
-		result, err := repository.GetByEmail(mtest.Background, tUser.Email)
+		r := repository.NewMongoUserRepository(mt.Client, mt.DB.Name(), nil)
+		result, err := r.GetByEmail(mtest.Background, tUser.Email)
 		assert.NoError(mt, err)
 		assert.EqualValues(t, tUser, result)
 	})

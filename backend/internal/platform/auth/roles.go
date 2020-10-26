@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 )
 
 // RoleAdmin represents admin role

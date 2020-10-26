@@ -17,7 +17,7 @@ import (
 	userHttp "bitbucket.org/dbproject_ivt/db/backend/internal/user/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
 	"github.com/dgrijalva/jwt-go"
-	validator "github.com/go-playground/validator/v10"
+	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -625,7 +625,7 @@ func TestUserHttp_Token(t *testing.T) {
 		body := new(web.ResponseError)
 		err = json.NewDecoder(rec.Body).Decode(body)
 		require.NoError(t, err)
-		assert.Equal(t, "Authentication failed", body.Error)
+		assert.Equal(t, "authentication failed", body.Error)
 
 		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 	})

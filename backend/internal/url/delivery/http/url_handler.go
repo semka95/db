@@ -10,8 +10,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
-	validator "github.com/go-playground/validator/v10"
-	en_translations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/go-playground/validator/v10"
+	enTranslations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
@@ -22,7 +22,7 @@ import (
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url"
 )
 
-// URLHandler represent the httphandler for url
+// URLHandler represent the http handler for url
 type URLHandler struct {
 	URLUsecase    url.Usecase
 	Authenticator *auth.Authenticator
@@ -66,22 +66,22 @@ func (uv *URLValidator) Validate(i interface{}) error {
 }
 
 // InitValidation will initialize validation for url handler
-func (u *URLHandler) InitValidation() error {
-	en := en.New()
-	u.Validator.Uni = ut.New(en, en)
+func (uh *URLHandler) InitValidation() error {
+	translator := en.New()
+	uh.Validator.Uni = ut.New(translator, translator)
 	var found bool
-	u.Validator.Trans, found = u.Validator.Uni.GetTranslator("en")
+	uh.Validator.Trans, found = uh.Validator.Uni.GetTranslator("en")
 	if !found {
-		u.Validator.Trans = u.Validator.Uni.GetFallback()
+		uh.Validator.Trans = uh.Validator.Uni.GetFallback()
 	}
 
-	u.Validator.V = validator.New()
-	err := u.Validator.V.RegisterValidation("linkid", checkURL)
+	uh.Validator.V = validator.New()
+	err := uh.Validator.V.RegisterValidation("linkid", checkURL)
 	if err != nil {
 		return err
 	}
 
-	err = u.Validator.V.RegisterTranslation("linkid", u.Validator.Trans, func(ut ut.Translator) error {
+	err = uh.Validator.V.RegisterTranslation("linkid", uh.Validator.Trans, func(ut ut.Translator) error {
 		return ut.Add("linkid", "{0} must contain only a-z, A-Z, 0-9, _, - characters", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 		t, _ := ut.T("linkid", fe.Field())
@@ -91,12 +91,12 @@ func (u *URLHandler) InitValidation() error {
 		return err
 	}
 
-	err = en_translations.RegisterDefaultTranslations(u.Validator.V, u.Validator.Trans)
+	err = enTranslations.RegisterDefaultTranslations(uh.Validator.V, uh.Validator.Trans)
 	if err != nil {
 		return err
 	}
 
-	u.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
+	uh.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 		if name == "-" {
 			return ""
@@ -113,12 +113,12 @@ func checkURL(fl validator.FieldLevel) bool {
 }
 
 // GetByID will get url by given id
-func (u *URLHandler) GetByID(c echo.Context) error {
+func (uh *URLHandler) GetByID(c echo.Context) error {
 	id := c.Param("id")
 
-	err := u.Validator.V.Var(id, "required,linkid,max=20")
+	err := uh.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
-		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -127,28 +127,28 @@ func (u *URLHandler) GetByID(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	url, err := u.URLUsecase.GetByID(ctx, id)
+	u, err := uh.URLUsecase.GetByID(ctx, id)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
-	return c.Redirect(http.StatusMovedPermanently, url.Link)
+	return c.Redirect(http.StatusMovedPermanently, u.Link)
 }
 
 // Store will store the URL by given request body
-func (u *URLHandler) Store(c echo.Context) error {
-	url := new(models.CreateURL)
-	if err := c.Bind(url); err != nil {
+func (uh *URLHandler) Store(c echo.Context) error {
+	u := new(models.CreateURL)
+	if err := c.Bind(u); err != nil {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
-	if err := c.Validate(url); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+	if err := c.Validate(u); err != nil {
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	if user, ok := c.Get("user").(*jwt.Token); ok {
 		claims := user.Claims.(auth.Claims)
-		url.UserID = claims.Subject
+		u.UserID = claims.Subject
 	}
 
 	ctx := c.Request().Context()
@@ -156,21 +156,21 @@ func (u *URLHandler) Store(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	result, err := u.URLUsecase.Store(ctx, url)
+	result, err := uh.URLUsecase.Store(ctx, u)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusCreated, result)
 }
 
 // Delete will delete URL by given id
-func (u *URLHandler) Delete(c echo.Context) error {
+func (uh *URLHandler) Delete(c echo.Context) error {
 	id := c.Param("id")
 
-	err := u.Validator.V.Var(id, "required,linkid,max=20")
+	err := uh.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
-		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -185,22 +185,22 @@ func (u *URLHandler) Delete(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	if err = u.URLUsecase.Delete(ctx, id, user); err != nil {
-		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
+	if err = uh.URLUsecase.Delete(ctx, id, user); err != nil {
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
 }
 
 // Update will update the URL by given request body
-func (u *URLHandler) Update(c echo.Context) error {
-	url := new(models.UpdateURL)
-	if err := c.Bind(url); err != nil {
+func (uh *URLHandler) Update(c echo.Context) error {
+	u := new(models.UpdateURL)
+	if err := c.Bind(u); err != nil {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
-	if err := c.Validate(url); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+	if err := c.Validate(u); err != nil {
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -215,8 +215,8 @@ func (u *URLHandler) Update(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	if err := u.URLUsecase.Update(ctx, url, user); err != nil {
-		return c.JSON(web.GetStatusCode(err, u.logger), web.ResponseError{Error: err.Error()})
+	if err := uh.URLUsecase.Update(ctx, u, user); err != nil {
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
