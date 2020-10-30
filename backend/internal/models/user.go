@@ -26,8 +26,9 @@ type CreateUser struct {
 
 // UpdateUser represents data to update User
 type UpdateUser struct {
-	ID       primitive.ObjectID `json:"id" validate:"required"`
-	FullName *string            `json:"full_name" validate:"omitempty,max=30"`
-	Email    *string            `json:"email" validate:"omitempty,email"`
-	Password *string            `json:"password" validate:"omitempty,min=8,max=30"`
+	ID              primitive.ObjectID `json:"id" validate:"required"`
+	FullName        *string            `json:"full_name" validate:"omitempty,max=30"`
+	Email           *string            `json:"email" validate:"omitempty,email"`
+	CurrentPassword string             `json:"current_password" validate:"required,min=8,max=30"`
+	NewPassword     *string            `json:"new_password" validate:"omitempty,min=8,max=30"`
 }

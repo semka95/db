@@ -59,7 +59,7 @@ func TestUserUsecase_Update(t *testing.T) {
 
 	t.Run("update not existed user", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(nil, web.ErrNotFound)
-		err := uc.Update(context.Background(), tUpdateUser, *claims)
+		err := uc.Update(context.Background(), tUpdateUser, claims)
 		assert.Error(t, err, web.ErrNotFound)
 	})
 
@@ -67,14 +67,13 @@ func TestUserUsecase_Update(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
 		repository.EXPECT().Update(gomock.Any(), tUser).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateUser, *claims)
+		err := uc.Update(context.Background(), tUpdateUser, claims)
 		assert.NoError(t, err)
-
-		errP := bcrypt.CompareHashAndPassword([]byte(tUser.HashedPassword), []byte(*tUpdateUser.Password))
-		assert.NoError(t, errP)
 
 		assert.Equal(t, *tUpdateUser.FullName, tUser.FullName)
 		assert.Equal(t, *tUpdateUser.Email, tUser.Email)
+		errP := bcrypt.CompareHashAndPassword([]byte(tUser.HashedPassword), []byte(*tUpdateUser.NewPassword))
+		assert.NoError(t, errP)
 	})
 
 	t.Run("update all fields are empty", func(t *testing.T) {
@@ -90,12 +89,12 @@ func TestUserUsecase_Update(t *testing.T) {
 		}
 		tUpdateUser.Email = nil
 		tUpdateUser.FullName = nil
-		tUpdateUser.Password = nil
+		tUpdateUser.NewPassword = nil
 
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
 		repository.EXPECT().Update(gomock.Any(), tUser).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateUser, *claims)
+		err := uc.Update(context.Background(), tUpdateUser, claims)
 		assert.NoError(t, err)
 
 		assert.WithinDuration(t, tUserOld.UpdatedAt, tUser.UpdatedAt, 10*time.Second)
@@ -107,7 +106,7 @@ func TestUserUsecase_Update(t *testing.T) {
 		claims.Subject = "wrong user"
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
 
-		err := uc.Update(context.Background(), tUpdateUser, *claims)
+		err := uc.Update(context.Background(), tUpdateUser, claims)
 		assert.Error(t, web.ErrForbidden, err)
 	})
 
@@ -117,8 +116,16 @@ func TestUserUsecase_Update(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
 		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateUser, *claims)
+		err := uc.Update(context.Background(), tUpdateUser, claims)
 		assert.NoError(t, err)
+	})
+
+	t.Run("update user wrong password", func(t *testing.T) {
+		repository.EXPECT().GetByID(gomock.Any(), tUpdateUser.ID).Return(tUser, nil)
+		tUpdateUser.CurrentPassword = "wrong password"
+
+		err := uc.Update(context.Background(), tUpdateUser, claims)
+		assert.Error(t, web.ErrAuthenticationFailure, err)
 	})
 }
 

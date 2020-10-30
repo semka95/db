@@ -38,13 +38,17 @@ func (uc *userUsecase) GetByID(c context.Context, id string) (*models.User, erro
 	return uc.userRepo.GetByID(ctx, objID)
 }
 
-func (uc *userUsecase) Update(c context.Context, updateUser *models.UpdateUser, claims auth.Claims) error {
+func (uc *userUsecase) Update(c context.Context, updateUser models.UpdateUser, claims auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
 	u, err := uc.userRepo.GetByID(ctx, updateUser.ID)
 	if err != nil {
 		return fmt.Errorf("can't get %s user: %w", updateUser.ID.Hex(), err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(updateUser.CurrentPassword)); err != nil {
+		return fmt.Errorf("compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 
 	if !claims.HasRole(auth.RoleAdmin) && u.ID.Hex() != claims.Subject {
@@ -59,10 +63,10 @@ func (uc *userUsecase) Update(c context.Context, updateUser *models.UpdateUser, 
 		u.Email = *updateUser.Email
 	}
 
-	if updateUser.Password != nil {
-		hashedPwd, err := generateHash(*updateUser.Password)
+	if updateUser.NewPassword != nil {
+		hashedPwd, err := generateHash(*updateUser.NewPassword)
 		if err != nil {
-			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.Password, web.ErrInternalServerError, err.Error())
+			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.NewPassword, web.ErrInternalServerError, err.Error())
 		}
 		u.HashedPassword = hashedPwd
 	}
@@ -72,7 +76,7 @@ func (uc *userUsecase) Update(c context.Context, updateUser *models.UpdateUser, 
 	return uc.userRepo.Update(ctx, u)
 }
 
-func (uc *userUsecase) Create(c context.Context, m *models.CreateUser) (*models.User, error) {
+func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.User, error) {
 	hashedPwd, err := generateHash(m.Password)
 	if err != nil {
 		return nil, fmt.Errorf("can't generate hash from this password - %s: %w: %s", m.Password, web.ErrInternalServerError, err.Error())
@@ -125,7 +129,7 @@ func (uc *userUsecase) Authenticate(c context.Context, now time.Time, email, pas
 	}
 
 	claims := auth.NewClaims(u.ID.Hex(), u.Roles, now, time.Hour)
-	return claims, nil
+	return &claims, nil
 }
 
 func generateHash(pass string) (string, error) {
