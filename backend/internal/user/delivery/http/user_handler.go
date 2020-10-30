@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -120,14 +121,17 @@ func (uh *UserHandler) Update(c echo.Context) error {
 	if !ok {
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
-	claims := token.Claims.(auth.Claims)
+	claims, ok := token.Claims.(*auth.Claims)
+	if !ok {
+		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
+	}
 
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	if err := uh.UserUsecase.Update(ctx, *u, claims); err != nil {
+	if err := uh.UserUsecase.Update(ctx, *u, *claims); err != nil {
 		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 

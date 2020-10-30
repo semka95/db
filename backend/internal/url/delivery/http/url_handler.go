@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 
@@ -108,7 +109,10 @@ func (uh *URLHandler) Store(c echo.Context) error {
 	}
 
 	if user, ok := c.Get("user").(*jwt.Token); ok {
-		claims := user.Claims.(auth.Claims)
+		claims, ok := user.Claims.(*auth.Claims)
+		if !ok {
+			return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
+		}
 		u.UserID = claims.Subject
 	}
 
@@ -139,14 +143,17 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 	if !ok {
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
-	user := token.Claims.(auth.Claims)
+	user, ok := token.Claims.(*auth.Claims)
+	if !ok {
+		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
+	}
 
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	if err = uh.URLUsecase.Delete(ctx, id, user); err != nil {
+	if err = uh.URLUsecase.Delete(ctx, id, *user); err != nil {
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
@@ -169,14 +176,17 @@ func (uh *URLHandler) Update(c echo.Context) error {
 	if !ok {
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
-	user := token.Claims.(auth.Claims)
+	user, ok := token.Claims.(*auth.Claims)
+	if !ok {
+		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
+	}
 
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	if err := uh.URLUsecase.Update(ctx, *u, user); err != nil {
+	if err := uh.URLUsecase.Update(ctx, *u, *user); err != nil {
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
