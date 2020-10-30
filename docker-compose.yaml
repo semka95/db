@@ -1,9 +1,11 @@
-version: "2.3"
+version: "3.8"
 services:
   # backend api built with golang
   backend:
-    image: shortener
+    build: ./backend
     container_name: shortener_management_api
+    env_file:
+      - ./backend/.env
     ports:
       - 9090:9090
     depends_on:
@@ -12,18 +14,17 @@ services:
     links:
       - mongodb
     volumes:
-      - ./backend/config.json:/app/config.json
+      - ./backend/config.yaml:/app/config.yaml
+      - ./backend/private.pem:/app/private.pem
 
   # mongodb is our primary data store
   mongodb:
-    image: mongo:latest
+    image: mongo:4.4.1-bionic
     container_name: mongodb
-    environment:
-      - MONGO_INITDB_DATABASE=shortener
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
-    #volumes:
-      #- ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    env_file:
+      - .env
+    volumes:
+      - ./mongo-volume:/data/db
     ports:
       - 27017:27017
     healthcheck:
@@ -35,17 +36,22 @@ services:
 
   # nginx is used for ssl termination
   nginx:
-    image: nginx
+    image: nginx:1.19.3-alpine
     ports:
       - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/cert.pem:/etc/nginx/conf.d/cert.pem:ro
+      - ./nginx/key.pem:/etc/nginx/conf.d/key.pem:ro
     depends_on:
       - frontend
       - backend
 
   # frontend
   frontend:
-    image: frontend
+    image: nginx:1.19.3-alpine
     volumes:
-      - ./frontend:/root
+      - ./frontend/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/build:/usr/share/nginx/html
     ports:
       - "3000:3000"

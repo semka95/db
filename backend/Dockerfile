@@ -1,10 +1,13 @@
 # Builder
-FROM golang:1.13.1-alpine3.10 as builder
+FROM golang:1.15.3-alpine3.12 as builder
 
 RUN apk update && apk upgrade && \
     apk --update add git make
 
 WORKDIR /app
+
+COPY go.* ./
+RUN go mod download
 
 COPY . .
 

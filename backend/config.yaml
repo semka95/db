@@ -12,6 +12,6 @@ auth:
 # MongoDB credentials
 mongo:
   name: "shortener"
-  user: ""
-  pwd: ""
-  host_port: "localhost:27017"
+  user: "admin"
+  pwd: "password"
+  host_port: "mongodb:27017"
