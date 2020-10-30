@@ -28,19 +28,20 @@ func NewUser() *models.User {
 }
 
 // NewUpdateUser creates instance of UpdateUser model
-func NewUpdateUser() *models.UpdateUser {
+func NewUpdateUser() models.UpdateUser {
 	id, _ := primitive.ObjectIDFromHex("507f191e810c19729de860ea")
-	return &models.UpdateUser{
-		ID:       id,
-		FullName: StringPointer("John Doe"),
-		Email:    StringPointer("test@example.com"),
-		Password: StringPointer("newpassword"),
+	return models.UpdateUser{
+		ID:              id,
+		FullName:        StringPointer("John Doe"),
+		Email:           StringPointer("test@example.com"),
+		CurrentPassword: "password",
+		NewPassword:     StringPointer("newpassword"),
 	}
 }
 
 // NewCreateUser creates instance of CreateUser model
-func NewCreateUser() *models.CreateUser {
-	return &models.CreateUser{
+func NewCreateUser() models.CreateUser {
+	return models.CreateUser{
 		FullName: "John Doe",
 		Email:    "test@example.com",
 		Password: "newpassword",
@@ -60,8 +61,8 @@ func NewURL() *models.URL {
 }
 
 // NewCreateURL creates instance of CreateURL model
-func NewCreateURL() *models.CreateURL {
-	return &models.CreateURL{
+func NewCreateURL() models.CreateURL {
+	return models.CreateURL{
 		ID:             StringPointer("test123"),
 		Link:           "http://www.example.org",
 		ExpirationDate: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC(),
@@ -70,8 +71,8 @@ func NewCreateURL() *models.CreateURL {
 }
 
 // NewUpdateURL creates instance of UpdateURL model
-func NewUpdateURL() *models.UpdateURL {
-	return &models.UpdateURL{
+func NewUpdateURL() models.UpdateURL {
+	return models.UpdateURL{
 		ID:             "test123",
 		ExpirationDate: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC(),
 	}

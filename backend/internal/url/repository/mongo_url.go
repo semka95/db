@@ -102,6 +102,7 @@ func (m *mongoURLRepository) Delete(ctx context.Context, id string) error {
 
 	return nil
 }
+
 func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error {
 	filter := bson.D{
 		primitive.E{Key: "_id", Value: url.ID},

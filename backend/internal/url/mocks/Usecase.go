@@ -51,7 +51,7 @@ func (mr *MockUsecaseMockRecorder) GetByID(ctx, id interface{}) *gomock.Call {
 }
 
 // Update mocks base method
-func (m *MockUsecase) Update(ctx context.Context, updateURL *models.UpdateURL, user auth.Claims) error {
+func (m *MockUsecase) Update(ctx context.Context, updateURL models.UpdateURL, user auth.Claims) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, updateURL, user)
 	ret0, _ := ret[0].(error)
@@ -65,7 +65,7 @@ func (mr *MockUsecaseMockRecorder) Update(ctx, updateURL, user interface{}) *gom
 }
 
 // Store mocks base method
-func (m *MockUsecase) Store(ctx context.Context, createURL *models.CreateURL) (*models.URL, error) {
+func (m *MockUsecase) Store(ctx context.Context, createURL models.CreateURL) (*models.URL, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Store", ctx, createURL)
 	ret0, _ := ret[0].(*models.URL)

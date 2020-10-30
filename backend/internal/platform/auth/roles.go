@@ -20,8 +20,8 @@ type Claims struct {
 }
 
 // NewClaims constructs a Claims value for the identified user
-func NewClaims(subject string, roles []string, now time.Time, expires time.Duration) *Claims {
-	c := &Claims{
+func NewClaims(subject string, roles []string, now time.Time, expires time.Duration) Claims {
+	c := Claims{
 		Roles: roles,
 		StandardClaims: jwt.StandardClaims{
 			Subject:   subject,

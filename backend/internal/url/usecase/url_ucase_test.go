@@ -114,14 +114,14 @@ func TestURLUsecase_Update(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		err := uc.Update(context.Background(), tUpdateURL, claims)
 		require.NoError(t, err)
 	})
 
 	t.Run("update not existing url", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(nil, web.ErrNotFound)
 
-		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		err := uc.Update(context.Background(), tUpdateURL, claims)
 		assert.Error(t, err, web.ErrNotFound)
 	})
 
@@ -129,7 +129,7 @@ func TestURLUsecase_Update(t *testing.T) {
 		claims.Subject = "wrong user"
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 
-		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		err := uc.Update(context.Background(), tUpdateURL, claims)
 		assert.Error(t, web.ErrForbidden, err)
 	})
 
@@ -138,7 +138,7 @@ func TestURLUsecase_Update(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 		repository.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		err := uc.Update(context.Background(), tUpdateURL, claims)
 		require.NoError(t, err)
 	})
 
@@ -146,7 +146,7 @@ func TestURLUsecase_Update(t *testing.T) {
 		tURL.UserID = ""
 		repository.EXPECT().GetByID(gomock.Any(), tUpdateURL.ID).Return(tURL, nil)
 
-		err := uc.Update(context.Background(), tUpdateURL, *claims)
+		err := uc.Update(context.Background(), tUpdateURL, claims)
 		assert.Error(t, web.ErrForbidden, err)
 	})
 }
@@ -164,13 +164,13 @@ func TestURLUsecase_Delete(t *testing.T) {
 	t.Run("delete existing url", func(t *testing.T) {
 		repository.EXPECT().Delete(gomock.Any(), tURL.ID).Return(nil)
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
-		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		err := uc.Delete(context.Background(), tURL.ID, claims)
 		require.NoError(t, err)
 	})
 
 	t.Run("delete not existing url", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, web.ErrNotFound)
-		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		err := uc.Delete(context.Background(), tURL.ID, claims)
 		assert.Error(t, err, web.ErrNotFound)
 	})
 
@@ -178,7 +178,7 @@ func TestURLUsecase_Delete(t *testing.T) {
 		claims.Subject = "wrong user"
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 
-		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		err := uc.Delete(context.Background(), tURL.ID, claims)
 		assert.Error(t, web.ErrForbidden, err)
 	})
 
@@ -187,7 +187,7 @@ func TestURLUsecase_Delete(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 		repository.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
-		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		err := uc.Delete(context.Background(), tURL.ID, claims)
 		require.NoError(t, err)
 	})
 
@@ -195,7 +195,7 @@ func TestURLUsecase_Delete(t *testing.T) {
 		tURL.UserID = ""
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 
-		err := uc.Delete(context.Background(), tURL.ID, *claims)
+		err := uc.Delete(context.Background(), tURL.ID, claims)
 		assert.Error(t, web.ErrForbidden, err)
 	})
 }

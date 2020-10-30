@@ -52,7 +52,7 @@ func (mr *MockUsecaseMockRecorder) GetByID(ctx, id interface{}) *gomock.Call {
 }
 
 // Update mocks base method
-func (m *MockUsecase) Update(ctx context.Context, user *models.UpdateUser, claims auth.Claims) error {
+func (m *MockUsecase) Update(ctx context.Context, user models.UpdateUser, claims auth.Claims) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, user, claims)
 	ret0, _ := ret[0].(error)
@@ -66,7 +66,7 @@ func (mr *MockUsecaseMockRecorder) Update(ctx, user, claims interface{}) *gomock
 }
 
 // Create mocks base method
-func (m *MockUsecase) Create(ctx context.Context, user *models.CreateUser) (*models.User, error) {
+func (m *MockUsecase) Create(ctx context.Context, user models.CreateUser) (*models.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, user)
 	ret0, _ := ret[0].(*models.User)

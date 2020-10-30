@@ -45,7 +45,11 @@ func main() {
 
 func run(logger *zap.Logger) error {
 	// Configuration
-	cfg, err := config.AppConfig("./config.yaml", logger)
+	configPath, ok := os.LookupEnv("CONFIG")
+	if !ok {
+		return fmt.Errorf("CONFIG environment variable is not specified")
+	}
+	cfg, err := config.AppConfig(configPath, logger)
 	if err != nil {
 		return err
 	}
@@ -55,6 +59,7 @@ func run(logger *zap.Logger) error {
 	defer cancel()
 
 	// Start database
+	cfg.MongoConfig.HostPort = "localhost:27017"
 	client, err := database.Open(ctx, cfg.MongoConfig, logger)
 	if err != nil {
 		return err
@@ -94,7 +99,7 @@ func migrateMongo(db *mongo.Client, dbName string) error {
 	}
 
 	// change this to something else
-	m, err := migrate.NewWithDatabaseInstance("file:///home/semyonz/Документы/db/backend/internal/schema/migrations", dbName, instance)
+	m, err := migrate.NewWithDatabaseInstance("file://./internal/schema/migrations", dbName, instance)
 	if err != nil {
 		return err
 	}

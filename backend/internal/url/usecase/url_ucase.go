@@ -33,7 +33,7 @@ func (uc *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error)
 	return uc.urlRepo.GetByID(ctx, id)
 }
 
-func (uc *urlUsecase) Update(c context.Context, updateURL *models.UpdateURL, user auth.Claims) error {
+func (uc *urlUsecase) Update(c context.Context, updateURL models.UpdateURL, user auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
@@ -56,7 +56,7 @@ func (uc *urlUsecase) Update(c context.Context, updateURL *models.UpdateURL, use
 	return uc.urlRepo.Update(ctx, u)
 }
 
-func (uc *urlUsecase) Store(c context.Context, createURL *models.CreateURL) (*models.URL, error) {
+func (uc *urlUsecase) Store(c context.Context, createURL models.CreateURL) (*models.URL, error) {
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
