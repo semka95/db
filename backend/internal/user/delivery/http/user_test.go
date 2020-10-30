@@ -32,6 +32,9 @@ func TestUserHttp_GetByID(t *testing.T) {
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("get user success", func(t *testing.T) {
 		uc.EXPECT().GetByID(gomock.Any(), tUser.ID.Hex()).Return(tUser, nil)
 		e := echo.New()
@@ -45,10 +48,8 @@ func TestUserHttp_GetByID(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err := handler.InitValidation()
-		require.NoError(t, err)
 
 		err = handler.GetByID(c)
 		require.NoError(t, err)
@@ -76,10 +77,8 @@ func TestUserHttp_GetByID(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
-		require.NoError(t, err)
 
 		err = handler.GetByID(c)
 		require.NoError(t, err)
@@ -102,6 +101,9 @@ func TestUserHttp_Create(t *testing.T) {
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("create user success", func(t *testing.T) {
 		uc.EXPECT().Create(gomock.Any(), tCreateUser).Return(tUser, nil)
 		e := echo.New()
@@ -118,11 +120,9 @@ func TestUserHttp_Create(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		require.NoError(t, err)
 
 		err = handler.Create(c)
 		require.NoError(t, err)
@@ -151,12 +151,10 @@ func TestUserHttp_Create(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 			Logger:      zap.NewExample(),
 		}
-		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		require.NoError(t, err)
 
 		err = handler.Create(c)
 		require.NoError(t, err)
@@ -186,11 +184,9 @@ func TestUserHttp_Create(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		require.NoError(t, err)
 
 		err = handler.Create(c)
 		require.NoError(t, err)
@@ -220,7 +216,7 @@ func TestUserHttp_Create(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
 
 		err = handler.Create(c)
@@ -243,6 +239,9 @@ func TestUserHttp_Delete(t *testing.T) {
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("delete success", func(t *testing.T) {
 		uc.EXPECT().Delete(gomock.Any(), tUser.ID.Hex()).Return(nil)
 		e := echo.New()
@@ -257,10 +256,8 @@ func TestUserHttp_Delete(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
-		require.NoError(t, err)
 
 		err = handler.Delete(c)
 		require.NoError(t, err)
@@ -281,10 +278,8 @@ func TestUserHttp_Delete(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
-		require.NoError(t, err)
 
 		err = handler.Delete(c)
 		require.NoError(t, err)
@@ -300,15 +295,19 @@ func TestUserHttp_Delete(t *testing.T) {
 
 func TestUserHttp_Update(t *testing.T) {
 	tUpdateUser := tests.NewUpdateUser()
+	//tUser := tests.NewUser()
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("update user success", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateUser, *claims).Return(nil)
+		uc.EXPECT().Update(gomock.Any(), tUpdateUser, claims).Return(nil)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateUser)
@@ -324,11 +323,9 @@ func TestUserHttp_Update(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		require.NoError(t, err)
 
 		err = handler.Update(c)
 		require.NoError(t, err)
@@ -352,11 +349,9 @@ func TestUserHttp_Update(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		require.NoError(t, err)
 
 		err = handler.Update(c)
 		require.NoError(t, err)
@@ -371,7 +366,7 @@ func TestUserHttp_Update(t *testing.T) {
 	})
 
 	t.Run("update user not exist", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateUser, *claims).Return(web.ErrNoAffected)
+		uc.EXPECT().Update(gomock.Any(), tUpdateUser, claims).Return(web.ErrNoAffected)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateUser)
@@ -388,11 +383,9 @@ func TestUserHttp_Update(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		require.NoError(t, err)
 
 		err = handler.Update(c)
 		require.NoError(t, err)
@@ -422,11 +415,9 @@ func TestUserHttp_Update(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
-		err = handler.InitValidation()
 		c.Echo().Validator = handler.Validator
-		require.NoError(t, err)
 
 		err = handler.Update(c)
 		require.NoError(t, err)
@@ -456,7 +447,7 @@ func TestUserHttp_Update(t *testing.T) {
 
 		handler := userHttp.UserHandler{
 			UserUsecase: uc,
-			Validator:   new(userHttp.UserValidator),
+			Validator:   v,
 		}
 
 		err = handler.Update(c)
@@ -473,11 +464,12 @@ func TestUserHttp_Update(t *testing.T) {
 }
 
 func TestValidateUser(t *testing.T) {
-	u := userHttp.UserHandler{
-		Validator: new(userHttp.UserValidator),
-	}
-	err := u.InitValidation()
+	v, err := web.NewAppValidator()
 	require.NoError(t, err)
+
+	u := userHttp.UserHandler{
+		Validator: v,
+	}
 
 	casesCreateUser := []struct {
 		Description string
@@ -502,14 +494,17 @@ func TestValidateUser(t *testing.T) {
 		{"id is empty", "UpdateUser.id", models.UpdateUser{Email: tests.StringPointer("test@examle.com")}, "id is a required field"},
 		{"full_name greater than 30 symbols", "UpdateUser.full_name", models.UpdateUser{FullName: tests.StringPointer("qwertyuioasdfghjklzxcvbnmqwerta")}, "full_name must be a maximum of 30 characters in length"},
 		{"email has wrong format", "UpdateUser.email", models.UpdateUser{Email: tests.StringPointer("wrong format")}, "email must be a valid email address"},
-		{"password less than 8 symbols", "UpdateUser.password", models.UpdateUser{Password: tests.StringPointer("sdf")}, "password must be at least 8 characters in length"},
-		{"password greater than 30 symbols", "UpdateUser.password", models.UpdateUser{Password: tests.StringPointer("qwertyuuioppasdfghjklzxcvbnmmasdf")}, "password must be a maximum of 30 characters in length"},
+		{"current_password is empty", "UpdateUser.current_password", models.UpdateUser{Email: tests.StringPointer("test@examle.com")}, "current_password is a required field"},
+		{"current_password less than 8 symbols", "UpdateUser.current_password", models.UpdateUser{CurrentPassword: "sdf"}, "current_password must be at least 8 characters in length"},
+		{"current_password greater than 30 symbols", "UpdateUser.current_password", models.UpdateUser{CurrentPassword: "qwertyuuioppasdfghjklzxcvbnmmasdf"}, "current_password must be a maximum of 30 characters in length"},
+		{"new_password less than 8 symbols", "UpdateUser.new_password", models.UpdateUser{NewPassword: tests.StringPointer("sdf")}, "new_password must be at least 8 characters in length"},
+		{"new_password greater than 30 symbols", "UpdateUser.new_password", models.UpdateUser{NewPassword: tests.StringPointer("qwertyuuioppasdfghjklzxcvbnmmasdf")}, "new_password must be a maximum of 30 characters in length"},
 	}
 
 	for _, test := range casesCreateUser {
 		t.Run(test.Description, func(t *testing.T) {
 			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
 				assert.Equal(t, test.Want, res[test.FieldName])
 			}
 		})
@@ -518,7 +513,7 @@ func TestValidateUser(t *testing.T) {
 	for _, test := range casesUpdateUser {
 		t.Run(test.Description, func(t *testing.T) {
 			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
 				assert.Equal(t, test.Want, res[test.FieldName])
 			}
 		})
@@ -545,8 +540,11 @@ func TestUserHttp_Token(t *testing.T) {
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("get token success", func(t *testing.T) {
-		uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(claims, nil)
+		uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(&claims, nil)
 		e := echo.New()
 		req := httptest.NewRequest(echo.GET, "/user/token", nil)
 		req.SetBasicAuth(tUser.Email, password)
@@ -558,10 +556,8 @@ func TestUserHttp_Token(t *testing.T) {
 		handler := userHttp.UserHandler{
 			UserUsecase:   uc,
 			Authenticator: authenticator,
-			Validator:     new(userHttp.UserValidator),
+			Validator:     v,
 		}
-		err := handler.InitValidation()
-		require.NoError(t, err)
 
 		err = handler.Token(c)
 		require.NoError(t, err)
@@ -585,10 +581,8 @@ func TestUserHttp_Token(t *testing.T) {
 		handler := userHttp.UserHandler{
 			UserUsecase:   uc,
 			Authenticator: authenticator,
-			Validator:     new(userHttp.UserValidator),
+			Validator:     v,
 		}
-		err := handler.InitValidation()
-		require.NoError(t, err)
 
 		err = handler.Token(c)
 		require.NoError(t, err)
@@ -614,10 +608,8 @@ func TestUserHttp_Token(t *testing.T) {
 		handler := userHttp.UserHandler{
 			UserUsecase:   uc,
 			Authenticator: authenticator,
-			Validator:     new(userHttp.UserValidator),
+			Validator:     v,
 		}
-		err := handler.InitValidation()
-		require.NoError(t, err)
 
 		err = handler.Token(c)
 		require.NoError(t, err)

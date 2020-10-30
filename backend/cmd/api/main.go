@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"context"
 	"crypto/rsa"
 	"fmt"
@@ -30,7 +31,7 @@ import (
 
 func main() {
 	// Logging
-	logger, err := zap.NewDevelopment()
+	logger, err := zap.NewDevelopment(zap.AddCaller())
 	if err != nil {
 		log.Println("can't create logger: ", err)
 		os.Exit(1)
@@ -51,7 +52,12 @@ func main() {
 
 func run(logger *zap.Logger) error {
 	// Configuration
-	cfg, err := config.AppConfig("../../config.yaml", logger)
+	configPath, ok := os.LookupEnv("SHORTENER_CONFIG")
+	if !ok {
+		return fmt.Errorf("SHORTENER_CONFIG environment variable is not specified")
+	}
+	logger.Info("Config path", zap.String(configPath, configPath))
+	cfg, err := config.AppConfig(configPath, logger)
 	if err != nil {
 		return err
 	}
@@ -69,6 +75,9 @@ func run(logger *zap.Logger) error {
 	// Echo configure
 	e := echo.New()
 	middL := _MyMiddleware.InitMiddleware(logger)
+	e.Pre(middleware.Rewrite(map[string]string{
+		"/api/*": "/$1",
+	}))
 	e.Use(middL.CORS)
 	e.Use(middL.Logger)
 	e.Use(middleware.RecoverWithConfig(middleware.DefaultRecoverConfig))
@@ -84,10 +93,17 @@ func run(logger *zap.Logger) error {
 		}
 	}()
 
+	// Initialize validator
+	v, err := web.NewAppValidator()
+	if err != nil {
+		return err
+	}
+	e.Validator = v
+
 	// Create URL API
 	ur := _URLRepo.NewMongoURLRepository(client, cfg.MongoConfig.Name, logger)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
-	err = _URLHttpDelivery.NewURLHandler(e, uu, authenticator, logger)
+	err = _URLHttpDelivery.NewURLHandler(e, uu, authenticator, v, logger)
 	if err != nil {
 		return fmt.Errorf("url handler creation failed: %w", err)
 	}
@@ -95,7 +111,7 @@ func run(logger *zap.Logger) error {
 	// Create User API
 	usr := _UserRepo.NewMongoUserRepository(client, cfg.MongoConfig.Name, logger)
 	usu := _UserUcase.NewUserUsecase(usr, timeoutContext)
-	err = _UserHttpDelivery.NewUserHandler(e, usu, authenticator, logger)
+	err = _UserHttpDelivery.NewUserHandler(e, usu, authenticator, v, logger)
 	if err != nil {
 		return fmt.Errorf("user handler creation failed: %w", err)
 	}

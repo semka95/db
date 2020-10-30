@@ -29,6 +29,9 @@ func TestURLHttp_GetByID(t *testing.T) {
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("get url success", func(t *testing.T) {
 		uc.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(tURL, nil)
 		e := echo.New()
@@ -42,9 +45,9 @@ func TestURLHttp_GetByID(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err := handler.InitValidation()
+		err := handler.RegisterValidation()
 		require.NoError(t, err)
 
 		err = handler.GetByID(c)
@@ -67,9 +70,9 @@ func TestURLHttp_GetByID(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		require.NoError(t, err)
 
 		err = handler.GetByID(c)
@@ -97,9 +100,9 @@ func TestURLHttp_GetByID(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		require.NoError(t, err)
 
 		err = handler.GetByID(c)
@@ -125,7 +128,10 @@ func TestURLHttp_Store(t *testing.T) {
 	uc := mocks.NewMockUsecase(controller)
 
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
 
 	t.Run("store url success", func(t *testing.T) {
 		uc.EXPECT().Store(gomock.Any(), tCreateURL).Return(tURL, nil)
@@ -144,9 +150,9 @@ func TestURLHttp_Store(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -182,9 +188,9 @@ func TestURLHttp_Store(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -217,9 +223,9 @@ func TestURLHttp_Store(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -251,9 +257,9 @@ func TestURLHttp_Store(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -285,7 +291,7 @@ func TestURLHttp_Store(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
 
 		err = handler.Store(c)
@@ -304,14 +310,17 @@ func TestURLHttp_Store(t *testing.T) {
 func TestURLHttp_Delete(t *testing.T) {
 	tURL := tests.NewURL()
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("delete url success", func(t *testing.T) {
-		uc.EXPECT().Delete(gomock.Any(), tURL.ID, *claims).Return(nil)
+		uc.EXPECT().Delete(gomock.Any(), tURL.ID, claims).Return(nil)
 		e := echo.New()
 		req, err := http.NewRequest(echo.DELETE, "/delete/"+tURL.ID, nil)
 		require.NoError(t, err)
@@ -325,9 +334,9 @@ func TestURLHttp_Delete(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		require.NoError(t, err)
 
 		err = handler.Delete(c)
@@ -349,9 +358,9 @@ func TestURLHttp_Delete(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		require.NoError(t, err)
 
 		err = handler.Delete(c)
@@ -367,7 +376,7 @@ func TestURLHttp_Delete(t *testing.T) {
 	})
 
 	t.Run("delete not existing url", func(t *testing.T) {
-		uc.EXPECT().Delete(gomock.Any(), tURL.ID, *claims).Return(web.ErrNoAffected)
+		uc.EXPECT().Delete(gomock.Any(), tURL.ID, claims).Return(web.ErrNoAffected)
 		e := echo.New()
 		req, err := http.NewRequest(echo.DELETE, "/delete/"+tURL.ID, nil)
 		require.NoError(t, err)
@@ -381,9 +390,9 @@ func TestURLHttp_Delete(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		require.NoError(t, err)
 
 		err = handler.Delete(c)
@@ -412,9 +421,9 @@ func TestURLHttp_Delete(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		require.NoError(t, err)
 
 		err = handler.Delete(c)
@@ -434,14 +443,17 @@ func TestURLHttp_Delete(t *testing.T) {
 func TestURLHttp_Update(t *testing.T) {
 	tUpdateURL := tests.NewUpdateURL()
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
 	t.Run("update url success", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateURL, *claims).Return(nil)
+		uc.EXPECT().Update(gomock.Any(), tUpdateURL, claims).Return(nil)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateURL)
@@ -458,9 +470,9 @@ func TestURLHttp_Update(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -486,9 +498,9 @@ func TestURLHttp_Update(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -505,7 +517,7 @@ func TestURLHttp_Update(t *testing.T) {
 	})
 
 	t.Run("update url not exist", func(t *testing.T) {
-		uc.EXPECT().Update(gomock.Any(), tUpdateURL, *claims).Return(web.ErrNoAffected)
+		uc.EXPECT().Update(gomock.Any(), tUpdateURL, claims).Return(web.ErrNoAffected)
 		e := echo.New()
 
 		b, err := json.Marshal(tUpdateURL)
@@ -522,9 +534,9 @@ func TestURLHttp_Update(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -556,9 +568,9 @@ func TestURLHttp_Update(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
-		err = handler.InitValidation()
+		err = handler.RegisterValidation()
 		c.Echo().Validator = handler.Validator
 		require.NoError(t, err)
 
@@ -590,7 +602,7 @@ func TestURLHttp_Update(t *testing.T) {
 
 		handler := urlHttp.URLHandler{
 			URLUsecase: uc,
-			Validator:  new(urlHttp.URLValidator),
+			Validator:  v,
 		}
 
 		err = handler.Update(c)
@@ -607,10 +619,12 @@ func TestURLHttp_Update(t *testing.T) {
 }
 
 func TestValidateURL(t *testing.T) {
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
 	u := urlHttp.URLHandler{
-		Validator: new(urlHttp.URLValidator),
+		Validator: v,
 	}
-	err := u.InitValidation()
+	err = u.RegisterValidation()
 	require.NoError(t, err)
 
 	casesCreateURL := []struct {
@@ -643,7 +657,7 @@ func TestValidateURL(t *testing.T) {
 	for _, test := range casesCreateURL {
 		t.Run(test.Description, func(t *testing.T) {
 			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
 				assert.Equal(t, test.Want, res[test.FieldName])
 			}
 		})
@@ -652,7 +666,7 @@ func TestValidateURL(t *testing.T) {
 	for _, test := range casesUpdateURL {
 		t.Run(test.Description, func(t *testing.T) {
 			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Trans)
+				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
 				assert.Equal(t, test.Want, res[test.FieldName])
 			}
 		})

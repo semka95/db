@@ -3,15 +3,10 @@ package http
 import (
 	"context"
 	"net/http"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-playground/locales/en"
-	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
-	enTranslations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/zap"
@@ -27,31 +22,18 @@ import (
 type UserHandler struct {
 	UserUsecase   user.Usecase
 	Authenticator *auth.Authenticator
-	Validator     *UserValidator
+	Validator     *web.AppValidator
 	Logger        *zap.Logger
 }
 
-// UserValidator represent validation struct for user
-type UserValidator struct {
-	Uni   *ut.UniversalTranslator
-	V     *validator.Validate
-	Trans ut.Translator
-}
-
 // NewUserHandler will initialize the user/ resources endpoint
-func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authenticator, logger *zap.Logger) error {
+func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authenticator, v *web.AppValidator, logger *zap.Logger) error {
 	handler := &UserHandler{
 		UserUsecase:   us,
 		Authenticator: authenticator,
-		Validator:     new(UserValidator),
+		Validator:     v,
 		Logger:        logger,
 	}
-
-	err := handler.InitValidation()
-	if err != nil {
-		return err
-	}
-	e.Validator = handler.Validator
 
 	myMiddl := _MyMiddleware.InitMiddleware(logger)
 
@@ -59,40 +41,7 @@ func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authentic
 	e.GET("/v1/user/:id", handler.GetByID, middleware.JWTWithConfig(authenticator.JWTConfig))
 	e.GET("v1/user/token", handler.Token)
 	e.DELETE("/v1/user/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
-	e.PUT("/v1/user/", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
-
-	return nil
-}
-
-// Validate serving to be called by Echo to validate user
-func (uv *UserValidator) Validate(i interface{}) error {
-	return uv.V.Struct(i)
-}
-
-// InitValidation will initialize validation for user handler
-func (uh *UserHandler) InitValidation() error {
-	translator := en.New()
-	uh.Validator.Uni = ut.New(translator, translator)
-	var found bool
-	uh.Validator.Trans, found = uh.Validator.Uni.GetTranslator("en")
-	if !found {
-		uh.Validator.Trans = uh.Validator.Uni.GetFallback()
-	}
-
-	uh.Validator.V = validator.New()
-
-	err := enTranslations.RegisterDefaultTranslations(uh.Validator.V, uh.Validator.Trans)
-	if err != nil {
-		return err
-	}
-
-	uh.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
-		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-		if name == "-" {
-			return ""
-		}
-		return name
-	})
+	e.PUT("/v1/user", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
 
 	return nil
 }
@@ -122,7 +71,7 @@ func (uh *UserHandler) Create(c echo.Context) error {
 	}
 
 	if err := c.Validate(newUser); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -131,7 +80,7 @@ func (uh *UserHandler) Create(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	u, err := uh.UserUsecase.Create(ctx, newUser)
+	u, err := uh.UserUsecase.Create(ctx, *newUser)
 	if err != nil {
 		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
@@ -163,7 +112,7 @@ func (uh *UserHandler) Update(c echo.Context) error {
 	}
 
 	if err := c.Validate(u); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
+		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -178,7 +127,7 @@ func (uh *UserHandler) Update(c echo.Context) error {
 		ctx = context.Background()
 	}
 
-	if err := uh.UserUsecase.Update(ctx, u, claims); err != nil {
+	if err := uh.UserUsecase.Update(ctx, *u, claims); err != nil {
 		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
 
@@ -205,7 +154,7 @@ func (uh *UserHandler) Token(c echo.Context) error {
 	var tkn struct {
 		Token string `json:"token"`
 	}
-	tkn.Token, err = uh.Authenticator.GenerateToken(claims)
+	tkn.Token, err = uh.Authenticator.GenerateToken(*claims)
 	if err != nil {
 		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
 	}
