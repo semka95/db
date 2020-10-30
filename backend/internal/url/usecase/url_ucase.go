@@ -103,24 +103,23 @@ func (uc *urlUsecase) Delete(c context.Context, id string, user auth.Claims) err
 }
 
 func (uc *urlUsecase) getURLToken(ctx context.Context, createID *string) (id string, err error) {
-	if createID == nil {
-		for {
-			src := rand.NewSource(time.Now().UnixNano())
-			id = gen.GenerateURLToken(6, src)
-
-			_, err = uc.GetByID(ctx, id)
-			if err != nil {
-				break
-			}
-		}
-	}
-
 	if createID != nil {
 		_, err := uc.GetByID(ctx, *createID)
 		if err == nil {
 			return "", fmt.Errorf("can't store URL, already exists: %w", web.ErrConflict)
 		}
-		id = *createID
+
+		return *createID, nil
+	}
+
+	for {
+		src := rand.NewSource(time.Now().UnixNano())
+		id = gen.GenerateURLToken(6, src)
+
+		_, err = uc.GetByID(ctx, id)
+		if err != nil {
+			break
+		}
 	}
 
 	return id, nil
