@@ -42,6 +42,7 @@ func NewURLHandler(e *echo.Echo, us url.Usecase, authenticator *auth.Authenticat
 	}
 
 	e.POST("/v1/url/create", handler.Store)
+	e.POST("/v1/user/url/create", handler.StoreUserURL, middleware.JWTWithConfig(authenticator.JWTConfig))
 	e.GET("/:id", handler.GetByID)
 	e.DELETE("/v1/url/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig))
 	e.PUT("/v1/url", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
@@ -99,6 +100,26 @@ func (uh *URLHandler) GetByID(c echo.Context) error {
 // Store will store the URL by given request body
 func (uh *URLHandler) Store(c echo.Context) error {
 	u := new(models.CreateURL)
+	return uh.storeURL(c, u)
+}
+
+// StoreUserURL will store the URL of authenticated user by given request body
+func (uh *URLHandler) StoreUserURL(c echo.Context) error {
+	u := new(models.CreateURL)
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
+	}
+	user, ok := token.Claims.(*auth.Claims)
+	if !ok {
+		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
+	}
+	u.UserID = user.Subject
+
+	return uh.storeURL(c, u)
+}
+
+func (uh *URLHandler) storeURL(c echo.Context, u *models.CreateURL) error {
 	if err := c.Bind(u); err != nil {
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
@@ -106,14 +127,6 @@ func (uh *URLHandler) Store(c echo.Context) error {
 	if err := c.Validate(u); err != nil {
 		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
-	}
-
-	if user, ok := c.Get("user").(*jwt.Token); ok {
-		claims, ok := user.Claims.(*auth.Claims)
-		if !ok {
-			return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
-		}
-		u.UserID = claims.Subject
 	}
 
 	ctx := c.Request().Context()
