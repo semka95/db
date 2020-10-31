@@ -295,9 +295,9 @@ func TestUserHttp_Delete(t *testing.T) {
 
 func TestUserHttp_Update(t *testing.T) {
 	tUpdateUser := tests.NewUpdateUser()
-	//tUser := tests.NewUser()
+
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
