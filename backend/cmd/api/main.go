@@ -36,13 +36,7 @@ func main() {
 		log.Println("can't create logger: ", err)
 		os.Exit(1)
 	}
-	defer func() {
-		err := logger.Sync()
-		if err != nil {
-			log.Println("can't close logger: ", err)
-			os.Exit(1)
-		}
-	}()
+	defer logger.Sync()
 
 	if err := run(logger); err != nil {
 		logger.Error("shutting down, error: ", zap.Error(err))
@@ -129,7 +123,8 @@ func run(logger *zap.Logger) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	if err := e.Shutdown(ctx); err != nil {
+	shutdownCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := e.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("can't shutdownn server: %w", err)
 	}
 
