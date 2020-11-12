@@ -5,6 +5,13 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	"go.opentelemetry.io/otel/api/global"
+	"go.opentelemetry.io/otel/exporters/otlp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/semconv"
+	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
 	"os"
@@ -62,9 +69,40 @@ func run(logger *zap.Logger) error {
 		return err
 	}
 
+	// Initialize context
 	timeoutContext := time.Duration(cfg.Server.Timeout) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
 	defer cancel()
+
+	// Initialize tracing
+	exp, err := otlp.NewExporter(
+		otlp.WithInsecure(),
+		otlp.WithAddress(cfg.Server.OtlpAddress),
+		otlp.WithGRPCDialOption(grpc.WithBlock()),
+	)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := exp.Shutdown(ctx); err != nil {
+			global.Handle(err)
+		}
+	}()
+
+	res := resource.New(
+		semconv.ServiceNameKey.String("shortener-management-api"),
+	)
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithConfig(sdktrace.Config{DefaultSampler: sdktrace.AlwaysSample()}),
+		sdktrace.WithResource(res),
+		sdktrace.WithBatcher(
+			exp,
+			sdktrace.WithBatchTimeout(5),
+			sdktrace.WithMaxExportBatchSize(10),
+		),
+	)
+	global.SetTracerProvider(tp)
 
 	// Echo configure
 	e := echo.New()
@@ -75,6 +113,7 @@ func run(logger *zap.Logger) error {
 	e.Use(middL.CORS)
 	e.Use(middL.Logger)
 	e.Use(middleware.RecoverWithConfig(middleware.DefaultRecoverConfig))
+	e.Use(otelecho.Middleware("shortener"))
 
 	// Start database
 	client, err := database.Open(ctx, cfg.MongoConfig, logger)

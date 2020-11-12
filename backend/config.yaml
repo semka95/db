@@ -1,7 +1,8 @@
 # Server configurations
 server:
-  address: ":9090"
+  address: ":9000"
   timeout: 20
+  otlp_address: "otel-collector:55680"
 
   # Auth parameters
 auth:
