@@ -144,10 +144,7 @@ func run(logger *zap.Logger) error {
 	// Create User API
 	usr := _UserRepo.NewMongoUserRepository(client, cfg.MongoConfig.Name, logger)
 	usu := _UserUcase.NewUserUsecase(usr, timeoutContext)
-	err = _UserHttpDelivery.NewUserHandler(e, usu, authenticator, v, logger)
-	if err != nil {
-		return fmt.Errorf("user handler creation failed: %w", err)
-	}
+	_UserHttpDelivery.NewUserHandler(e, usu, authenticator, v, logger)
 
 	// Status check
 	database.NewStatusHandler(e, client.Database(cfg.MongoConfig.Name))

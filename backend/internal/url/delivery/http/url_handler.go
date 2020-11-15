@@ -43,7 +43,8 @@ func NewURLHandler(e *echo.Echo, us url.Usecase, authenticator *auth.Authenticat
 
 	e.POST("/v1/url/create", handler.Store)
 	e.POST("/v1/user/url/create", handler.StoreUserURL, middleware.JWTWithConfig(authenticator.JWTConfig))
-	e.GET("/:id", handler.GetByID)
+	e.GET("/:id", handler.Redirect)
+	e.GET("/v1/url/:id", handler.GetByID)
 	e.DELETE("/v1/url/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig))
 	e.PUT("/v1/url", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
 
@@ -75,14 +76,39 @@ func checkURL(fl validator.FieldLevel) bool {
 	return r.MatchString(fl.Field().String())
 }
 
+// Redirect will redirect to link by given id
+func (uh *URLHandler) Redirect(c echo.Context) error {
+	u, err := uh.getByID(c)
+	if err != nil {
+		return err
+	}
+
+	if u != nil {
+		return c.Redirect(http.StatusMovedPermanently, u.Link)
+	}
+	return nil
+}
+
 // GetByID will get url by given id
 func (uh *URLHandler) GetByID(c echo.Context) error {
+	u, err := uh.getByID(c)
+	if err != nil {
+		return err
+	}
+
+	if u != nil {
+		return c.JSON(http.StatusOK, u)
+	}
+	return nil
+}
+
+func (uh *URLHandler) getByID(c echo.Context) (*models.URL, error) {
 	id := c.Param("id")
 
 	err := uh.Validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
 		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
+		return nil, c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	ctx := c.Request().Context()
@@ -92,9 +118,10 @@ func (uh *URLHandler) GetByID(c echo.Context) error {
 
 	u, err := uh.URLUsecase.GetByID(ctx, id)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
+		return nil, c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
-	return c.Redirect(http.StatusMovedPermanently, u.Link)
+
+	return u, nil
 }
 
 // Store will store the URL by given request body
@@ -107,7 +134,7 @@ func (uh *URLHandler) Store(c echo.Context) error {
 func (uh *URLHandler) StoreUserURL(c echo.Context) error {
 	u := new(models.CreateURL)
 	token, ok := c.Get("user").(*jwt.Token)
-	if !ok {
+	if !ok || token == nil {
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	user, ok := token.Claims.(*auth.Claims)
@@ -153,7 +180,7 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 	}
 
 	token, ok := c.Get("user").(*jwt.Token)
-	if !ok {
+	if !ok || token == nil {
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	user, ok := token.Claims.(*auth.Claims)
@@ -186,7 +213,7 @@ func (uh *URLHandler) Update(c echo.Context) error {
 	}
 
 	token, ok := c.Get("user").(*jwt.Token)
-	if !ok {
+	if !ok || token == nil {
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	user, ok := token.Claims.(*auth.Claims)

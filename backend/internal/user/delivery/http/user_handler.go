@@ -28,7 +28,7 @@ type UserHandler struct {
 }
 
 // NewUserHandler will initialize the user/ resources endpoint
-func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authenticator, v *web.AppValidator, logger *zap.Logger) error {
+func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authenticator, v *web.AppValidator, logger *zap.Logger) {
 	handler := &UserHandler{
 		UserUsecase:   us,
 		Authenticator: authenticator,
@@ -43,8 +43,6 @@ func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authentic
 	e.GET("v1/user/token", handler.Token)
 	e.DELETE("/v1/user/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
 	e.PUT("/v1/user", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
-
-	return nil
 }
 
 // GetByID will get user by given id
@@ -118,7 +116,7 @@ func (uh *UserHandler) Update(c echo.Context) error {
 	}
 
 	token, ok := c.Get("user").(*jwt.Token)
-	if !ok {
+	if !ok || token == nil {
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	claims, ok := token.Claims.(*auth.Claims)
