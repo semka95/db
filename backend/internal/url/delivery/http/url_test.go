@@ -20,29 +20,37 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-func TestURLHttp_RedirectAndGetByID(t *testing.T) {
-	tURL := tests.NewURL()
+func TestURLHTTP(t *testing.T) {
+	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
 
+	tracer := sdktrace.NewTracerProvider().Tracer("")
 	v, err := web.NewAppValidator()
 	require.NoError(t, err)
 	handler := urlHttp.URLHandler{
 		URLUsecase: uc,
 		Validator:  v,
+		Tracer:     tracer,
 	}
 	err = handler.RegisterValidation()
 	require.NoError(t, err)
 
 	e := echo.New()
 	req := new(http.Request)
+	e.Validator = v
 	c := e.NewContext(req, nil)
 
-	cases := []struct {
+	// Test URLHandler.GetByID and Redirect
+	tURL := tests.NewURL()
+
+	casesGet := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		param         string
@@ -119,7 +127,7 @@ func TestURLHttp_RedirectAndGetByID(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range casesGet {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.GET, "/"+tc.param, nil)
@@ -135,46 +143,24 @@ func TestURLHttp_RedirectAndGetByID(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestURLHttp_StoreUserURLandStore(t *testing.T) {
+	// Test URLHandler.Store
 	tCreateUserURL := tests.NewCreateURL()
-	tUserURL := tests.NewURL()
 	tCreateURL := tests.NewCreateURL()
 	tCreateURL.UserID = ""
-	tURL := tests.NewURL()
-	tURL.UserID = ""
+	tURLCr := tests.NewURL()
+	tURLCr.UserID = ""
 	tCreateURLBadID := tests.NewCreateURL()
 	tCreateURLBadID.ID = tests.StringPointer("test!")
 
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-	uc := mocks.NewMockUsecase(controller)
-
-	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
-
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-	handler := urlHttp.URLHandler{
-		URLUsecase: uc,
-		Validator:  v,
-	}
-	err = handler.RegisterValidation()
-
-	e := echo.New()
-	e.Validator = v
-	req := new(http.Request)
-	c := e.NewContext(req, nil)
-
-	createUserURLB, err := json.Marshal(tCreateUserURL)
-	require.NoError(t, err)
 	createURLB, err := json.Marshal(tCreateURL)
 	require.NoError(t, err)
 	tCreateURLBadIDB, err := json.Marshal(tCreateURLBadID)
 	require.NoError(t, err)
+	createUserURLB, err := json.Marshal(tCreateUserURL)
+	require.NoError(t, err)
 
-	cases := []struct {
+	casesCreate := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		reqBody       *bytes.Buffer
@@ -185,7 +171,7 @@ func TestURLHttp_StoreUserURLandStore(t *testing.T) {
 		{
 			description: "StoreUserURL success",
 			mockCalls: func(muc *mocks.MockUsecase) {
-				uc.EXPECT().Store(gomock.Any(), tCreateUserURL).Return(tUserURL, nil)
+				uc.EXPECT().Store(gomock.Any(), tCreateUserURL).Return(tURL, nil)
 			},
 			reqBody: bytes.NewBuffer(createUserURLB),
 			auth:    true,
@@ -197,7 +183,7 @@ func TestURLHttp_StoreUserURLandStore(t *testing.T) {
 				body := new(models.URL)
 				err = json.NewDecoder(rec.Body).Decode(body)
 				require.NoError(t, err)
-				assert.EqualValues(t, tUserURL, body)
+				assert.EqualValues(t, tURL, body)
 				assert.Equal(t, http.StatusCreated, rec.Code)
 			},
 		},
@@ -221,7 +207,7 @@ func TestURLHttp_StoreUserURLandStore(t *testing.T) {
 		{
 			description: "Store success",
 			mockCalls: func(muc *mocks.MockUsecase) {
-				uc.EXPECT().Store(gomock.Any(), tCreateURL).Return(tURL, nil)
+				uc.EXPECT().Store(gomock.Any(), tCreateURL).Return(tURLCr, nil)
 			},
 			reqBody: bytes.NewBuffer(createURLB),
 			auth:    false,
@@ -233,7 +219,7 @@ func TestURLHttp_StoreUserURLandStore(t *testing.T) {
 				body := new(models.URL)
 				err = json.NewDecoder(rec.Body).Decode(body)
 				require.NoError(t, err)
-				assert.EqualValues(t, tURL, body)
+				assert.EqualValues(t, tURLCr, body)
 				assert.Equal(t, http.StatusCreated, rec.Code)
 			},
 		},
@@ -292,7 +278,7 @@ func TestURLHttp_StoreUserURLandStore(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range cases {
+	for _, tc := range casesCreate {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.POST, "/user/url/create", tc.reqBody)
@@ -310,34 +296,12 @@ func TestURLHttp_StoreUserURLandStore(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestURLHttp_Delete(t *testing.T) {
-	tURL := tests.NewURL()
+	// Test URLHandler.Delete
 	tURLBadEmail := tests.NewURL()
 	tURLBadEmail.ID = "te!t"
 
-	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
-
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-	uc := mocks.NewMockUsecase(controller)
-
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-	handler := urlHttp.URLHandler{
-		URLUsecase: uc,
-		Validator:  v,
-	}
-	err = handler.RegisterValidation()
-
-	e := echo.New()
-	req := new(http.Request)
-	c := e.NewContext(req, nil)
-	e.Validator = v
-
-	cases := []struct {
+	casesDelete := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		auth          bool
@@ -345,7 +309,7 @@ func TestURLHttp_Delete(t *testing.T) {
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "success",
+			description: "Delete success",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Delete(gomock.Any(), tURL.ID, claims).Return(nil)
 			},
@@ -356,7 +320,7 @@ func TestURLHttp_Delete(t *testing.T) {
 			},
 		},
 		{
-			description: "not authorized",
+			description: "Delete not authorized",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			auth:        false,
 			url:         tURL,
@@ -369,7 +333,7 @@ func TestURLHttp_Delete(t *testing.T) {
 			},
 		},
 		{
-			description: "not existing url",
+			description: "Delete not existing url",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Delete(gomock.Any(), tURL.ID, claims).Return(web.ErrNoAffected)
 			},
@@ -384,7 +348,7 @@ func TestURLHttp_Delete(t *testing.T) {
 			},
 		},
 		{
-			description: "validation error",
+			description: "Delete validation error",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			auth:        true,
 			url:         tURLBadEmail,
@@ -398,7 +362,7 @@ func TestURLHttp_Delete(t *testing.T) {
 			},
 		},
 	}
-	for _, tc := range cases {
+	for _, tc := range casesDelete {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.DELETE, "/"+tc.url.ID, nil)
@@ -418,39 +382,18 @@ func TestURLHttp_Delete(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestURLHttp_Update(t *testing.T) {
+	// Test URLHandler.Update
 	tUpdateURL := tests.NewUpdateURL()
 	tUpdateURLBadID := tests.NewUpdateURL()
 	tUpdateURLBadID.ID = ""
-
-	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
-
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-	uc := mocks.NewMockUsecase(controller)
-
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-	handler := urlHttp.URLHandler{
-		URLUsecase: uc,
-		Validator:  v,
-	}
-	err = handler.RegisterValidation()
-
-	e := echo.New()
-	e.Validator = v
-	req := new(http.Request)
-	c := e.NewContext(req, nil)
 
 	tUpdateURLB, err := json.Marshal(tUpdateURL)
 	require.NoError(t, err)
 	tUpdateURLBadIDB, err := json.Marshal(tUpdateURLBadID)
 	require.NoError(t, err)
 
-	cases := []struct {
+	casesUpdate := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		reqBody       *bytes.Buffer
@@ -458,7 +401,7 @@ func TestURLHttp_Update(t *testing.T) {
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "success",
+			description: "Update success",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Update(gomock.Any(), tUpdateURL, claims).Return(nil)
 			},
@@ -469,7 +412,7 @@ func TestURLHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "not authorized",
+			description: "Update not authorized",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer(tUpdateURLB),
 			token:       nil,
@@ -482,7 +425,7 @@ func TestURLHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "not exist",
+			description: "Update not exist",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Update(gomock.Any(), tUpdateURL, claims).Return(web.ErrNoAffected)
 			},
@@ -497,7 +440,7 @@ func TestURLHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "validation error",
+			description: "Update validation error",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer(tUpdateURLBadIDB),
 			token:       nil,
@@ -511,7 +454,7 @@ func TestURLHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "bad request data",
+			description: "Update bad request data",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer([]byte("wrong data")),
 			token:       nil,
@@ -525,7 +468,7 @@ func TestURLHttp_Update(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range casesUpdate {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.PUT, "/url/update", tc.reqBody)
@@ -542,58 +485,109 @@ func TestURLHttp_Update(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestValidateURL(t *testing.T) {
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-	u := urlHttp.URLHandler{
-		Validator: v,
-	}
-	err = u.RegisterValidation()
-	require.NoError(t, err)
-
+	// Test validation for models.CreateURL and models.UpdateURL structs
 	casesCreateURL := []struct {
-		Description string
-		FieldName   string
-		Data        models.CreateURL
-		Want        string
+		description string
+		fieldName   string
+		data        models.CreateURL
+		want        string
 	}{
-		{"id not valid format", "CreateURL.id", models.CreateURL{ID: tests.StringPointer("test1/,!")}, "id must contain only a-z, A-Z, 0-9, _, - characters"},
-		{"id too short", "CreateURL.id", models.CreateURL{ID: tests.StringPointer("tes")}, "id must be at least 7 characters in length"},
-		{"id too long", "CreateURL.id", models.CreateURL{ID: tests.StringPointer("testqwertyuiopasdfghj")}, "id must be a maximum of 20 characters in length"},
-		{"link not set", "CreateURL.link", models.CreateURL{ID: tests.StringPointer("test123")}, "link is a required field"},
-		{"link has wrong format", "CreateURL.link", models.CreateURL{ID: tests.StringPointer("test123"), Link: "not url"}, "link must be a valid URL"},
-		{"expiration date has wrong format", "CreateURL.expiration_date", models.CreateURL{ID: tests.StringPointer("test123"), Link: "https://www.example.org", ExpirationDate: time.Now().AddDate(0, 0, -1)}, "expiration_date must be greater than the current Date & Time"},
+		{
+			description: "validate CreateURL id not valid format",
+			fieldName:   "CreateURL.id",
+			data:        models.CreateURL{ID: tests.StringPointer("test1/,!")},
+			want:        "id must contain only a-z, A-Z, 0-9, _, - characters",
+		},
+		{
+			description: "validate CreateURL id too short",
+			fieldName:   "CreateURL.id",
+			data:        models.CreateURL{ID: tests.StringPointer("tes")},
+			want:        "id must be at least 7 characters in length",
+		},
+		{
+			description: "validate CreateURL id too long",
+			fieldName:   "CreateURL.id",
+			data:        models.CreateURL{ID: tests.StringPointer("testqwertyuiopasdfghj")},
+			want:        "id must be a maximum of 20 characters in length",
+		},
+		{
+			description: "validate CreateURL link not set",
+			fieldName:   "CreateURL.link",
+			data:        models.CreateURL{ID: tests.StringPointer("test123")},
+			want:        "link is a required field",
+		},
+		{
+			description: "validate CreateURL link has wrong format",
+			fieldName:   "CreateURL.link",
+			data:        models.CreateURL{ID: tests.StringPointer("test123"), Link: "not url"},
+			want:        "link must be a valid URL",
+		},
+		{
+			description: "validate CreateURL expiration date has wrong format",
+			fieldName:   "CreateURL.expiration_date",
+			data: models.CreateURL{
+				ID:             tests.StringPointer("test123"),
+				Link:           "https://www.example.org",
+				ExpirationDate: time.Now().AddDate(0, 0, -1),
+			},
+			want: "expiration_date must be greater than the current Date & Time",
+		},
 	}
 
 	casesUpdateURL := []struct {
-		Description string
-		FieldName   string
-		Data        models.UpdateURL
-		Want        string
+		description string
+		fieldName   string
+		data        models.UpdateURL
+		want        string
 	}{
-		{"id not set", "UpdateURL.id", models.UpdateURL{}, "id is a required field"},
-		{"id not valid format", "UpdateURL.id", models.UpdateURL{ID: "test1/,!"}, "id must contain only a-z, A-Z, 0-9, _, - characters"},
-		{"id too long", "UpdateURL.id", models.UpdateURL{ID: "testqwertyuiopasdfghj"}, "id must be a maximum of 20 characters in length"},
-		{"expiration date not set", "UpdateURL.expiration_date", models.UpdateURL{ID: "test123"}, "expiration_date is a required field"},
-		{"expiration date has wrong format", "UpdateURL.expiration_date", models.UpdateURL{ID: "test123", ExpirationDate: time.Now().AddDate(0, 0, -1)}, "expiration_date must be greater than the current Date & Time"},
+		{
+			description: "validate UpdateURL id not set",
+			fieldName:   "UpdateURL.id",
+			want:        "id is a required field",
+		},
+		{
+			description: "validate UpdateURL id not valid format",
+			fieldName:   "UpdateURL.id",
+			data:        models.UpdateURL{ID: "test1/,!"},
+			want:        "id must contain only a-z, A-Z, 0-9, _, - characters",
+		},
+		{
+			description: "validate UpdateURL id too long",
+			fieldName:   "UpdateURL.id",
+			data:        models.UpdateURL{ID: "testqwertyuiopasdfghj"},
+			want:        "id must be a maximum of 20 characters in length",
+		},
+		{
+			description: "validate UpdateURL expiration date not set",
+			fieldName:   "UpdateURL.expiration_date",
+			data:        models.UpdateURL{ID: "test123"},
+			want:        "expiration_date is a required field",
+		},
+		{
+			description: "validate UpdateURL expiration date has wrong format",
+			fieldName:   "UpdateURL.expiration_date",
+			data: models.UpdateURL{
+				ID:             "test123",
+				ExpirationDate: time.Now().AddDate(0, 0, -1),
+			},
+			want: "expiration_date must be greater than the current Date & Time"},
 	}
 
-	for _, test := range casesCreateURL {
-		t.Run(test.Description, func(t *testing.T) {
-			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
-				assert.Equal(t, test.Want, res[test.FieldName])
+	for _, tc := range casesCreateURL {
+		t.Run(tc.description, func(t *testing.T) {
+			if err := handler.Validator.V.Struct(tc.data); err != nil {
+				res := err.(validator.ValidationErrors).Translate(handler.Validator.Translator)
+				assert.Equal(t, tc.want, res[tc.fieldName])
 			}
 		})
 	}
 
-	for _, test := range casesUpdateURL {
-		t.Run(test.Description, func(t *testing.T) {
-			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
-				assert.Equal(t, test.Want, res[test.FieldName])
+	for _, tc := range casesUpdateURL {
+		t.Run(tc.description, func(t *testing.T) {
+			if err := handler.Validator.V.Struct(tc.data); err != nil {
+				res := err.(validator.ValidationErrors).Translate(handler.Validator.Translator)
+				assert.Equal(t, tc.want, res[tc.fieldName])
 			}
 		})
 	}
