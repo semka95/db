@@ -1,17 +1,9 @@
 package main
 
 import (
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"context"
 	"crypto/rsa"
 	"fmt"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
-	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv"
-	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,10 +11,18 @@ import (
 	"syscall"
 	"time"
 
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	"go.opentelemetry.io/otel/api/global"
+	"go.opentelemetry.io/otel/exporters/otlp"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/semconv"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
 	_MyMiddleware "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
@@ -43,7 +43,10 @@ func main() {
 		log.Println("can't create logger: ", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() {
+		// do not need to check for errors
+		_ = logger.Sync()
+	}()
 
 	if err := run(logger); err != nil {
 		logger.Error("shutting down, error: ", zap.Error(err))
@@ -103,6 +106,7 @@ func run(logger *zap.Logger) error {
 		),
 	)
 	global.SetTracerProvider(tp)
+	tracer := global.Tracer("shortener-tracer")
 
 	// Echo configure
 	e := echo.New()
@@ -113,7 +117,7 @@ func run(logger *zap.Logger) error {
 	e.Use(middL.CORS)
 	e.Use(middL.Logger)
 	e.Use(middleware.RecoverWithConfig(middleware.DefaultRecoverConfig))
-	e.Use(otelecho.Middleware("shortener"))
+	e.Use(otelecho.Middleware("shortener", otelecho.WithTracerProvider(tp)))
 
 	// Start database
 	client, err := database.Open(ctx, cfg.MongoConfig, logger)
@@ -134,9 +138,9 @@ func run(logger *zap.Logger) error {
 	e.Validator = v
 
 	// Create URL API
-	ur := _URLRepo.NewMongoURLRepository(client, cfg.MongoConfig.Name, logger)
-	uu := _URLUcase.NewURLUsecase(ur, timeoutContext)
-	err = _URLHttpDelivery.NewURLHandler(e, uu, authenticator, v, logger)
+	ur := _URLRepo.NewMongoURLRepository(client, cfg.MongoConfig.Name, logger, tracer)
+	uu := _URLUcase.NewURLUsecase(ur, timeoutContext, tracer)
+	err = _URLHttpDelivery.NewURLHandler(e, uu, authenticator, v, logger, tracer)
 	if err != nil {
 		return fmt.Errorf("url handler creation failed: %w", err)
 	}
@@ -159,7 +163,8 @@ func run(logger *zap.Logger) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	shutdownCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 	if err := e.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("can't shutdownn server: %w", err)
 	}

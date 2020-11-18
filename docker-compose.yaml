@@ -65,6 +65,8 @@ services:
     ports:
       - "16686:16686"
       - "14250"
+    environment:
+      - LOG_LEVEL=debug
 
   # Zipkin
   zipkin-all-in-one:
@@ -83,8 +85,8 @@ services:
 
   # Collector
   otel-collector:
-    image: otel/opentelemetry-collector-dev:latest
-    command: [ "--config=/etc/otel-collector-config.yaml", "${OTELCOL_ARGS}" ]
+    image: otel/opentelemetry-collector:0.13.0
+    command: [ "--config=/etc/otel-collector-config.yaml", "--log-level=DEBUG", "${OTELCOL_ARGS}" ]
     volumes:
       - ./telemetry/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
@@ -98,3 +100,5 @@ services:
       - jaeger-all-in-one
       - zipkin-all-in-one
       - prometheus
+    environment:
+      - JAEGER_REPORTER_LOG_SPANS=true
