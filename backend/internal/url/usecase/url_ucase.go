@@ -6,6 +6,10 @@ import (
 	"math/rand"
 	"time"
 
+	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/label"
+
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	gen "bitbucket.org/dbproject_ivt/db/backend/internal/platform/url_gen"
@@ -16,19 +20,30 @@ import (
 type urlUsecase struct {
 	urlRepo        url.Repository
 	contextTimeout time.Duration
+	tracer         trace.Tracer
 }
 
 // NewURLUsecase will create new an urlUsecase object representation of url.Usecase interface
-func NewURLUsecase(u url.Repository, timeout time.Duration) url.Usecase {
+func NewURLUsecase(u url.Repository, timeout time.Duration, tracer trace.Tracer) url.Usecase {
 	return &urlUsecase{
 		urlRepo:        u,
 		contextTimeout: timeout,
+		tracer:         tracer,
 	}
 }
 
 func (uc *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error) {
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
+
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase GetByID",
+		trace.WithAttributes(
+			label.String("urlid", id)),
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
 
 	return uc.urlRepo.GetByID(ctx, id)
 }
@@ -37,16 +52,28 @@ func (uc *urlUsecase) Update(c context.Context, updateURL models.UpdateURL, user
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase Update",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
 	u, err := uc.urlRepo.GetByID(ctx, updateURL.ID)
 	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return fmt.Errorf("can't get %s user: %w", updateURL.ID, err)
 	}
+	span.SetAttributes(label.String("urlid", updateURL.ID))
 
 	if u.UserID == "" {
-		return fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
+		err = fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		return err
 	}
 
 	if !user.HasRole(auth.RoleAdmin) && u.UserID != user.Subject {
+		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
 		return web.ErrForbidden
 	}
 
@@ -60,10 +87,19 @@ func (uc *urlUsecase) Store(c context.Context, createURL models.CreateURL) (*mod
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase Store",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
 	id, err := uc.getURLToken(ctx, createURL.ID)
 	if err != nil {
-		return nil, err
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		return nil, fmt.Errorf("can't get %s user: %w", *createURL.ID, err)
 	}
+	span.SetAttributes(label.String("urlid", id))
 
 	u := &models.URL{
 		ID:             id,
@@ -76,6 +112,7 @@ func (uc *urlUsecase) Store(c context.Context, createURL models.CreateURL) (*mod
 
 	err = uc.urlRepo.Store(ctx, u)
 	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return nil, err
 	}
 
@@ -86,16 +123,29 @@ func (uc *urlUsecase) Delete(c context.Context, id string, user auth.Claims) err
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase Delete",
+		trace.WithAttributes(
+			label.String("urlid", id)),
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
 	u, err := uc.urlRepo.GetByID(ctx, id)
 	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return fmt.Errorf("can't get %s user: %w", id, err)
 	}
 
 	if u.UserID == "" {
-		return fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
+		err = fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		return err
 	}
 
 	if !user.HasRole(auth.RoleAdmin) && u.UserID != user.Subject {
+		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
 		return web.ErrForbidden
 	}
 
@@ -103,9 +153,17 @@ func (uc *urlUsecase) Delete(c context.Context, id string, user auth.Claims) err
 }
 
 func (uc *urlUsecase) getURLToken(ctx context.Context, createID *string) (id string, err error) {
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase getURLToken",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
 	if createID != nil {
 		_, err := uc.GetByID(ctx, *createID)
 		if err == nil {
+			span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 			return "", fmt.Errorf("can't store URL, already exists: %w", web.ErrConflict)
 		}
 
