@@ -140,15 +140,17 @@ func run(logger *zap.Logger) error {
 	// Create URL API
 	ur := _URLRepo.NewMongoURLRepository(client, cfg.MongoConfig.Name, logger, tracer)
 	uu := _URLUcase.NewURLUsecase(ur, timeoutContext, tracer)
-	err = _URLHttpDelivery.NewURLHandler(e, uu, authenticator, v, logger, tracer)
+	uh, err := _URLHttpDelivery.NewURLHandler(uu, authenticator, v, logger, tracer)
 	if err != nil {
 		return fmt.Errorf("url handler creation failed: %w", err)
 	}
+	uh.RegisterRoutes(e)
 
 	// Create User API
-	usr := _UserRepo.NewMongoUserRepository(client, cfg.MongoConfig.Name, logger)
-	usu := _UserUcase.NewUserUsecase(usr, timeoutContext)
-	_UserHttpDelivery.NewUserHandler(e, usu, authenticator, v, logger)
+	usr := _UserRepo.NewMongoUserRepository(client, cfg.MongoConfig.Name, logger, tracer)
+	usu := _UserUcase.NewUserUsecase(usr, timeoutContext, tracer)
+	ush := _UserHttpDelivery.NewUserHandler(usu, authenticator, v, logger, tracer)
+	ush.RegisterRoutes(e)
 
 	// Status check
 	database.NewStatusHandler(e, client.Database(cfg.MongoConfig.Name))

@@ -24,46 +24,49 @@ import (
 
 // URLHandler represent the http handler for url
 type URLHandler struct {
-	URLUsecase    url.Usecase
-	Authenticator *auth.Authenticator
-	Validator     *web.AppValidator
+	urlUsecase    url.Usecase
+	authenticator *auth.Authenticator
+	validator     *web.AppValidator
 	logger        *zap.Logger
-	Tracer        trace.Tracer
+	tracer        trace.Tracer
 }
 
 // NewURLHandler will initialize the url/ resources endpoint
-func NewURLHandler(e *echo.Echo, us url.Usecase, authenticator *auth.Authenticator, v *web.AppValidator, logger *zap.Logger, tracer trace.Tracer) error {
+func NewURLHandler(us url.Usecase, authenticator *auth.Authenticator, v *web.AppValidator, logger *zap.Logger, tracer trace.Tracer) (*URLHandler, error) {
 	handler := &URLHandler{
-		URLUsecase:    us,
-		Authenticator: authenticator,
-		Validator:     v,
+		urlUsecase:    us,
+		authenticator: authenticator,
+		validator:     v,
 		logger:        logger,
-		Tracer:        tracer,
+		tracer:        tracer,
 	}
 
 	err := handler.RegisterValidation()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	e.POST("/v1/url/create", handler.Store)
-	e.POST("/v1/user/url/create", handler.StoreUserURL, middleware.JWTWithConfig(authenticator.JWTConfig))
-	e.GET("/:id", handler.Redirect)
-	e.GET("/v1/url/:id", handler.GetByID)
-	e.DELETE("/v1/url/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig))
-	e.PUT("/v1/url", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
+	return handler, nil
+}
 
-	return nil
+// RegisterRoutes registers routes for a path with matching handler
+func (uh *URLHandler) RegisterRoutes(e *echo.Echo) {
+	e.POST("/v1/url/create", uh.Store)
+	e.POST("/v1/user/url/create", uh.StoreUserURL, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
+	e.GET("/:id", uh.Redirect)
+	e.GET("/v1/url/:id", uh.GetByID)
+	e.DELETE("/v1/url/:id", uh.Delete, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
+	e.PUT("/v1/url", uh.Update, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
 }
 
 // RegisterValidation will initialize validation for url handler
 func (uh *URLHandler) RegisterValidation() error {
-	err := uh.Validator.V.RegisterValidation("linkid", checkURL)
+	err := uh.validator.V.RegisterValidation("linkid", checkURL)
 	if err != nil {
 		return err
 	}
 
-	err = uh.Validator.V.RegisterTranslation("linkid", uh.Validator.Translator, func(ut ut.Translator) error {
+	err = uh.validator.V.RegisterTranslation("linkid", uh.validator.Translator, func(ut ut.Translator) error {
 		return ut.Add("linkid", "{0} must contain only a-z, A-Z, 0-9, _, - characters", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 		t, _ := ut.T("linkid", fe.Field())
@@ -87,7 +90,7 @@ func (uh *URLHandler) Redirect(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Redirect",
 	)
@@ -111,7 +114,7 @@ func (uh *URLHandler) GetByID(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http GetByID",
 	)
@@ -136,20 +139,20 @@ func (uh *URLHandler) getByID(c echo.Context) (*models.URL, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http getByID",
 	)
 	defer span.End()
 
-	err := uh.Validator.V.Var(id, "required,linkid,max=20")
+	err := uh.validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
+		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return nil, c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
-	u, err := uh.URLUsecase.GetByID(ctx, id)
+	u, err := uh.urlUsecase.GetByID(ctx, id)
 	if err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return nil, c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
@@ -167,7 +170,7 @@ func (uh *URLHandler) Store(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Store",
 	)
@@ -183,7 +186,7 @@ func (uh *URLHandler) StoreUserURL(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http StoreUserURL",
 	)
@@ -211,7 +214,7 @@ func (uh *URLHandler) StoreUserURL(c echo.Context) error {
 }
 
 func (uh *URLHandler) storeURL(ctx context.Context, c echo.Context, u *models.CreateURL) error {
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http storeURL",
 	)
@@ -224,11 +227,11 @@ func (uh *URLHandler) storeURL(ctx context.Context, c echo.Context, u *models.Cr
 
 	if err := c.Validate(u); err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
+		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
-	result, err := uh.URLUsecase.Store(ctx, *u)
+	result, err := uh.urlUsecase.Store(ctx, *u)
 	if err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
@@ -249,16 +252,16 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Delete",
 	)
 	defer span.End()
 
-	err := uh.Validator.V.Var(id, "required,linkid,max=20")
+	err := uh.validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
+		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -273,7 +276,7 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
 	}
 
-	if err = uh.URLUsecase.Delete(ctx, id, *user); err != nil {
+	if err = uh.urlUsecase.Delete(ctx, id, *user); err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
@@ -292,7 +295,7 @@ func (uh *URLHandler) Update(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, span := uh.Tracer.Start(
+	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Update",
 	)
@@ -306,7 +309,7 @@ func (uh *URLHandler) Update(c echo.Context) error {
 
 	if err := c.Validate(u); err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Translator)
+		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
@@ -321,7 +324,7 @@ func (uh *URLHandler) Update(c echo.Context) error {
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
 	}
 
-	if err := uh.URLUsecase.Update(ctx, *u, *user); err != nil {
+	if err := uh.urlUsecase.Update(ctx, *u, *user); err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}

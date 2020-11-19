@@ -3,6 +3,7 @@ package http_test
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/go-playground/validator/v10"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,7 +16,6 @@ import (
 	urlHttp "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -34,12 +34,8 @@ func TestURLHTTP(t *testing.T) {
 	tracer := sdktrace.NewTracerProvider().Tracer("")
 	v, err := web.NewAppValidator()
 	require.NoError(t, err)
-	handler := urlHttp.URLHandler{
-		URLUsecase: uc,
-		Validator:  v,
-		Tracer:     tracer,
-	}
-	err = handler.RegisterValidation()
+
+	handler, err := urlHttp.NewURLHandler(uc, nil, v, nil, tracer)
 	require.NoError(t, err)
 
 	e := echo.New()
@@ -576,8 +572,8 @@ func TestURLHTTP(t *testing.T) {
 
 	for _, tc := range casesCreateURL {
 		t.Run(tc.description, func(t *testing.T) {
-			if err := handler.Validator.V.Struct(tc.data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(handler.Validator.Translator)
+			if err := v.V.Struct(tc.data); err != nil {
+				res := err.(validator.ValidationErrors).Translate(v.Translator)
 				assert.Equal(t, tc.want, res[tc.fieldName])
 			}
 		})
@@ -585,8 +581,8 @@ func TestURLHTTP(t *testing.T) {
 
 	for _, tc := range casesUpdateURL {
 		t.Run(tc.description, func(t *testing.T) {
-			if err := handler.Validator.V.Struct(tc.data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(handler.Validator.Translator)
+			if err := v.V.Struct(tc.data); err != nil {
+				res := err.(validator.ValidationErrors).Translate(v.Translator)
 				assert.Equal(t, tc.want, res[tc.fieldName])
 			}
 		})
