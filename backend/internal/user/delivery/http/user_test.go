@@ -1,53 +1,72 @@
 package http_test
 
 import (
-	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
-
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	userHttp "bitbucket.org/dbproject_ivt/db/backend/internal/user/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
+	"encoding/json"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
 )
 
-func TestUserHttp_GetByID(t *testing.T) {
+func TestUserHTTP(t *testing.T) {
 	tUser := tests.NewUser()
+	password := "password"
+	claims := auth.NewClaims(tUser.ID.Hex(), tUser.Roles, time.Now(), time.Hour)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	kid := "4754d86b-7a6d-4df5-9c65-224741361492"
+	kf := auth.NewSimpleKeyLookupFunc(kid, key.Public().(*rsa.PublicKey))
+	authenticator, err := auth.NewAuthenticator(key, kid, "RS256", kf)
+	require.NoError(t, err)
+
+	tokenStr, err := authenticator.GenerateToken(claims)
+	require.NoError(t, err)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()
 	uc := mocks.NewMockUsecase(controller)
-	handler := userHttp.UserHandler{
-		UserUsecase: uc,
-	}
+
+	tracer := sdktrace.NewTracerProvider().Tracer("")
+	v, err := web.NewAppValidator()
+	require.NoError(t, err)
+
+	handler := userHttp.NewUserHandler(uc, authenticator, v, zap.NewNop(), tracer)
 
 	e := echo.New()
+	e.Validator = v
 	req := new(http.Request)
 	c := e.NewContext(req, nil)
-	var err error
+
+	// Test UserHandler.GetByID
 	reqTarget := "/" + tUser.ID.Hex()
 
-	cases := []struct {
+	casesGet := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "success",
+			description: "GetByID success",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().GetByID(gomock.Any(), tUser.ID.Hex()).Return(tUser, nil)
 			},
@@ -61,7 +80,7 @@ func TestUserHttp_GetByID(t *testing.T) {
 			},
 		},
 		{
-			description: "not found",
+			description: "GetByID not found",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().GetByID(gomock.Any(), tUser.ID.Hex()).Return(nil, web.ErrNotFound)
 			},
@@ -75,7 +94,7 @@ func TestUserHttp_GetByID(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range casesGet {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.GET, reqTarget, nil)
@@ -92,59 +111,41 @@ func TestUserHttp_GetByID(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestUserHttp_Create(t *testing.T) {
+	// Test UserHandler.Create
 	tCreateUser := tests.NewCreateUser()
-	tUser := tests.NewUser()
-	tUser.HashedPassword = ""
+	tUserCr := tests.NewUser()
+	tUserCr.HashedPassword = ""
 	tCreateUserBadEmail := tests.NewCreateUser()
 	tCreateUserBadEmail.Email = "bad email"
-
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-	uc := mocks.NewMockUsecase(controller)
-
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-	handler := userHttp.UserHandler{
-		UserUsecase: uc,
-		Validator:   v,
-		Logger:      zap.NewNop(),
-	}
-
-	e := echo.New()
-	e.Validator = v
-	req := new(http.Request)
-	c := e.NewContext(req, nil)
 
 	createUserB, err := json.Marshal(tCreateUser)
 	require.NoError(t, err)
 	tCreateUserBadEmailB, err := json.Marshal(tCreateUserBadEmail)
 	require.NoError(t, err)
 
-	cases := []struct {
+	casesCreate := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		reqBody       *bytes.Buffer
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "success",
+			description: "Create success",
 			mockCalls: func(muc *mocks.MockUsecase) {
-				uc.EXPECT().Create(gomock.Any(), tCreateUser).Return(tUser, nil)
+				uc.EXPECT().Create(gomock.Any(), tCreateUser).Return(tUserCr, nil)
 			},
 			reqBody: bytes.NewBuffer(createUserB),
 			checkResponse: func(rec *httptest.ResponseRecorder) {
 				body := new(models.User)
 				err = json.NewDecoder(rec.Body).Decode(body)
 				require.NoError(t, err)
-				assert.EqualValues(t, tUser, body)
+				assert.EqualValues(t, tUserCr, body)
 				assert.Equal(t, http.StatusCreated, rec.Code)
 			},
 		},
 		{
-			description: "internal error",
+			description: "Create internal error",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Create(gomock.Any(), tCreateUser).Return(nil, web.ErrInternalServerError)
 			},
@@ -158,7 +159,7 @@ func TestUserHttp_Create(t *testing.T) {
 			},
 		},
 		{
-			description: "validation error",
+			description: "Create validation error",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer(tCreateUserBadEmailB),
 			checkResponse: func(rec *httptest.ResponseRecorder) {
@@ -171,7 +172,7 @@ func TestUserHttp_Create(t *testing.T) {
 			},
 		},
 		{
-			description: "bad request data",
+			description: "Create bad request data",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer([]byte("wrong data")),
 			checkResponse: func(rec *httptest.ResponseRecorder) {
@@ -184,7 +185,7 @@ func TestUserHttp_Create(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range casesCreate {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.POST, "/user/create", tc.reqBody)
@@ -200,31 +201,15 @@ func TestUserHttp_Create(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestUserHttp_Delete(t *testing.T) {
-	tUser := tests.NewUser()
-
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-	uc := mocks.NewMockUsecase(controller)
-	handler := userHttp.UserHandler{
-		UserUsecase: uc,
-	}
-
-	e := echo.New()
-	req := new(http.Request)
-	c := e.NewContext(req, nil)
-	var err error
-	reqTarget := "/user/" + tUser.ID.Hex()
-
-	cases := []struct {
+	// Test UserHandler.Delete
+	casesDelete := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "success",
+			description: "Delete success",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Delete(gomock.Any(), tUser.ID.Hex()).Return(nil)
 			},
@@ -233,7 +218,7 @@ func TestUserHttp_Delete(t *testing.T) {
 			},
 		},
 		{
-			description: "existed user",
+			description: "Delete existed user",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Delete(gomock.Any(), tUser.ID.Hex()).Return(web.ErrNoAffected)
 			},
@@ -247,10 +232,10 @@ func TestUserHttp_Delete(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range casesDelete {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
-			req = httptest.NewRequest(echo.DELETE, reqTarget, nil)
+			req = httptest.NewRequest(echo.DELETE, "/user/"+tUser.ID.Hex(), nil)
 
 			rec := httptest.NewRecorder()
 			c.Reset(req, rec)
@@ -264,38 +249,18 @@ func TestUserHttp_Delete(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestUserHttp_Update(t *testing.T) {
+	// Test UserHandler.Update
 	tUpdateUser := tests.NewUpdateUser()
 	tUpdateUserWrongEmail := tests.NewUpdateUser()
 	tUpdateUserWrongEmail.Email = tests.StringPointer("wrong email")
-
-	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
-
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-	uc := mocks.NewMockUsecase(controller)
-
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-	handler := userHttp.UserHandler{
-		UserUsecase: uc,
-		Validator:   v,
-	}
-
-	e := echo.New()
-	e.Validator = v
-	req := new(http.Request)
-	c := e.NewContext(req, nil)
 
 	tUpdateUserB, err := json.Marshal(tUpdateUser)
 	require.NoError(t, err)
 	tUpdateUserWrongEmailB, err := json.Marshal(tUpdateUserWrongEmail)
 	require.NoError(t, err)
 
-	cases := []struct {
+	casesUpdate := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		reqBody       *bytes.Buffer
@@ -303,7 +268,7 @@ func TestUserHttp_Update(t *testing.T) {
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "success",
+			description: "Update success",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Update(gomock.Any(), tUpdateUser, claims).Return(nil)
 			},
@@ -314,7 +279,7 @@ func TestUserHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "not authorized",
+			description: "Update not authorized",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer(tUpdateUserB),
 			token:       nil,
@@ -327,7 +292,7 @@ func TestUserHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "not exist",
+			description: "Update not exist",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Update(gomock.Any(), tUpdateUser, claims).Return(web.ErrNoAffected)
 			},
@@ -342,7 +307,7 @@ func TestUserHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "validation error",
+			description: "Update validation error",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer(tUpdateUserWrongEmailB),
 			token:       nil,
@@ -356,7 +321,7 @@ func TestUserHttp_Update(t *testing.T) {
 			},
 		},
 		{
-			description: "bad request data",
+			description: "Update bad request data",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			reqBody:     bytes.NewBuffer([]byte("wrong data")),
 			token:       nil,
@@ -370,7 +335,7 @@ func TestUserHttp_Update(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range casesUpdate {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.PUT, "/user/", tc.reqBody)
@@ -387,106 +352,16 @@ func TestUserHttp_Update(t *testing.T) {
 			tc.checkResponse(rec)
 		})
 	}
-}
 
-func TestValidateUser(t *testing.T) {
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-
-	u := userHttp.UserHandler{
-		Validator: v,
-	}
-
-	casesCreateUser := []struct {
-		Description string
-		FieldName   string
-		Data        models.CreateUser
-		Want        string
-	}{
-		{"full_name greater than 30 symbols", "CreateUser.full_name", models.CreateUser{FullName: "qwertyuioasdfghjklzxcvbnmqwerta"}, "full_name must be a maximum of 30 characters in length"},
-		{"email has wrong format", "CreateUser.email", models.CreateUser{Email: "wrong format"}, "email must be a valid email address"},
-		{"email is empty", "CreateUser.email", models.CreateUser{Password: "test123456777"}, "email is a required field"},
-		{"password less than 8 symbols", "CreateUser.password", models.CreateUser{Password: "sdf"}, "password must be at least 8 characters in length"},
-		{"password greater than 30 symbols", "CreateUser.password", models.CreateUser{Password: "qwertyuuioppasdfghjklzxcvbnmmasdf"}, "password must be a maximum of 30 characters in length"},
-		{"password is empty", "CreateUser.password", models.CreateUser{Email: "test@examle.com"}, "password is a required field"},
-	}
-
-	casesUpdateUser := []struct {
-		Description string
-		FieldName   string
-		Data        models.UpdateUser
-		Want        string
-	}{
-		{"id is empty", "UpdateUser.id", models.UpdateUser{Email: tests.StringPointer("test@examle.com")}, "id is a required field"},
-		{"full_name greater than 30 symbols", "UpdateUser.full_name", models.UpdateUser{FullName: tests.StringPointer("qwertyuioasdfghjklzxcvbnmqwerta")}, "full_name must be a maximum of 30 characters in length"},
-		{"email has wrong format", "UpdateUser.email", models.UpdateUser{Email: tests.StringPointer("wrong format")}, "email must be a valid email address"},
-		{"current_password is empty", "UpdateUser.current_password", models.UpdateUser{Email: tests.StringPointer("test@examle.com")}, "current_password is a required field"},
-		{"current_password less than 8 symbols", "UpdateUser.current_password", models.UpdateUser{CurrentPassword: "sdf"}, "current_password must be at least 8 characters in length"},
-		{"current_password greater than 30 symbols", "UpdateUser.current_password", models.UpdateUser{CurrentPassword: "qwertyuuioppasdfghjklzxcvbnmmasdf"}, "current_password must be a maximum of 30 characters in length"},
-		{"new_password less than 8 symbols", "UpdateUser.new_password", models.UpdateUser{NewPassword: tests.StringPointer("sdf")}, "new_password must be at least 8 characters in length"},
-		{"new_password greater than 30 symbols", "UpdateUser.new_password", models.UpdateUser{NewPassword: tests.StringPointer("qwertyuuioppasdfghjklzxcvbnmmasdf")}, "new_password must be a maximum of 30 characters in length"},
-	}
-
-	for _, test := range casesCreateUser {
-		t.Run(test.Description, func(t *testing.T) {
-			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
-				assert.Equal(t, test.Want, res[test.FieldName])
-			}
-		})
-	}
-
-	for _, test := range casesUpdateUser {
-		t.Run(test.Description, func(t *testing.T) {
-			if err := u.Validator.V.Struct(test.Data); err != nil {
-				res := err.(validator.ValidationErrors).Translate(u.Validator.Translator)
-				assert.Equal(t, test.Want, res[test.FieldName])
-			}
-		})
-	}
-}
-
-func TestUserHttp_Token(t *testing.T) {
-	tUser := tests.NewUser()
-	password := "password"
-	claims := auth.NewClaims(tUser.ID.Hex(), tUser.Roles, time.Now(), time.Hour)
-
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	require.NoError(t, err)
-
-	kid := "4754d86b-7a6d-4df5-9c65-224741361492"
-	kf := auth.NewSimpleKeyLookupFunc(kid, key.Public().(*rsa.PublicKey))
-	authenticator, err := auth.NewAuthenticator(key, kid, "RS256", kf)
-	require.NoError(t, err)
-
-	token, err := authenticator.GenerateToken(claims)
-	require.NoError(t, err)
-
-	controller := gomock.NewController(t)
-	defer controller.Finish()
-	uc := mocks.NewMockUsecase(controller)
-
-	v, err := web.NewAppValidator()
-	require.NoError(t, err)
-	handler := userHttp.UserHandler{
-		UserUsecase:   uc,
-		Authenticator: authenticator,
-		Validator:     v,
-	}
-
-	e := echo.New()
-	e.Validator = v
-	req := new(http.Request)
-	c := e.NewContext(req, nil)
-
-	cases := []struct {
+	// Test UserHandler.Authenticate
+	casesAuth := []struct {
 		description   string
 		mockCalls     func(muc *mocks.MockUsecase)
 		auth          bool
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "success",
+			description: "Authenticate success",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(&claims, nil)
 			},
@@ -495,12 +370,12 @@ func TestUserHttp_Token(t *testing.T) {
 				body := make(map[string]string)
 				err = json.NewDecoder(rec.Body).Decode(&body)
 				require.NoError(t, err)
-				assert.Equal(t, token, body["token"])
+				assert.Equal(t, tokenStr, body["token"])
 				assert.Equal(t, http.StatusOK, rec.Code)
 			},
 		},
 		{
-			description: "no credentials",
+			description: "Authenticate no credentials",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			auth:        false,
 			checkResponse: func(rec *httptest.ResponseRecorder) {
@@ -512,7 +387,7 @@ func TestUserHttp_Token(t *testing.T) {
 			},
 		},
 		{
-			description: "authentication failure",
+			description: "Authenticate authentication failure",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(nil, web.ErrAuthenticationFailure)
 			},
@@ -527,7 +402,7 @@ func TestUserHttp_Token(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range casesAuth {
 		t.Run(tc.description, func(t *testing.T) {
 			tc.mockCalls(uc)
 			req = httptest.NewRequest(echo.GET, "/user/token", nil)
@@ -543,6 +418,125 @@ func TestUserHttp_Token(t *testing.T) {
 			require.NoError(t, err)
 
 			tc.checkResponse(rec)
+		})
+	}
+
+	// Test validation for models.CreateUser and models.UpdateUser structs
+	casesCreateUser := []struct {
+		description string
+		fieldName   string
+		data        models.CreateUser
+		want        string
+	}{
+		{
+			description: "validate full_name greater than 30 symbols",
+			fieldName:   "CreateUser.full_name",
+			data:        models.CreateUser{FullName: "qwertyuioasdfghjklzxcvbnmqwerta"},
+			want:        "full_name must be a maximum of 30 characters in length",
+		},
+		{
+			description: "validate email has wrong format",
+			fieldName:   "CreateUser.email",
+			data:        models.CreateUser{Email: "wrong format"},
+			want:        "email must be a valid email address",
+		},
+		{
+			description: "validate email is empty",
+			fieldName:   "CreateUser.email",
+			data:        models.CreateUser{Password: "test123456777"},
+			want:        "email is a required field",
+		},
+		{
+			description: "validate password less than 8 symbols",
+			fieldName:   "CreateUser.password",
+			data:        models.CreateUser{Password: "sdf"},
+			want:        "password must be at least 8 characters in length",
+		},
+		{
+			description: "validate password greater than 30 symbols",
+			fieldName:   "CreateUser.password",
+			data:        models.CreateUser{Password: "qwertyuuioppasdfghjklzxcvbnmmasdf"},
+			want:        "password must be a maximum of 30 characters in length",
+		},
+		{
+			description: "validate password is empty",
+			fieldName:   "CreateUser.password",
+			data:        models.CreateUser{Email: "test@examle.com"},
+			want:        "password is a required field",
+		},
+	}
+
+	casesUpdateUser := []struct {
+		description string
+		fieldName   string
+		data        models.UpdateUser
+		want        string
+	}{
+		{
+			description: "validate id is empty",
+			fieldName:   "UpdateUser.id",
+			data:        models.UpdateUser{Email: tests.StringPointer("test@examle.com")},
+			want:        "id is a required field",
+		},
+		{
+			description: "validate full_name greater than 30 symbols",
+			fieldName:   "UpdateUser.full_name",
+			data:        models.UpdateUser{FullName: tests.StringPointer("qwertyuioasdfghjklzxcvbnmqwerta")},
+			want:        "full_name must be a maximum of 30 characters in length",
+		},
+		{
+			description: "validate email has wrong format",
+			fieldName:   "UpdateUser.email",
+			data:        models.UpdateUser{Email: tests.StringPointer("wrong format")},
+			want:        "email must be a valid email address",
+		},
+		{
+			description: "validate current_password is empty",
+			fieldName:   "UpdateUser.current_password",
+			data:        models.UpdateUser{Email: tests.StringPointer("test@examle.com")},
+			want:        "current_password is a required field",
+		},
+		{
+			description: "validate current_password less than 8 symbols",
+			fieldName:   "UpdateUser.current_password",
+			data:        models.UpdateUser{CurrentPassword: "sdf"},
+			want:        "current_password must be at least 8 characters in length",
+		},
+		{
+			description: "validate current_password greater than 30 symbols",
+			fieldName:   "UpdateUser.current_password",
+			data:        models.UpdateUser{CurrentPassword: "qwertyuuioppasdfghjklzxcvbnmmasdf"},
+			want:        "current_password must be a maximum of 30 characters in length",
+		},
+		{
+			description: "validate new_password less than 8 symbols",
+			fieldName:   "UpdateUser.new_password",
+			data:        models.UpdateUser{NewPassword: tests.StringPointer("sdf")},
+			want:        "new_password must be at least 8 characters in length",
+		},
+		{
+			description: "validate new_password greater than 30 symbols",
+			fieldName:   "UpdateUser.new_password",
+			data:        models.UpdateUser{NewPassword: tests.StringPointer("qwertyuuioppasdfghjklzxcvbnmmasdf")},
+			want:        "new_password must be a maximum of 30 characters in length",
+		},
+	}
+
+	for _, tc := range casesCreateUser {
+		t.Run(tc.description, func(t *testing.T) {
+			if err := v.V.Struct(tc.data); err != nil {
+				res := err.(validator.ValidationErrors).Translate(v.Translator)
+				assert.Equal(t, tc.want, res[tc.fieldName])
+			}
+		})
+	}
+
+	for _, tc := range casesUpdateUser {
+		t.Run(tc.description, func(t *testing.T) {
+			if err := v.V.Struct(tc.data); err != nil {
+				res := err.(validator.ValidationErrors).Translate(v.Translator)
+				assert.Equal(t, tc.want, res[tc.fieldName])
+			}
 		})
 	}
 }

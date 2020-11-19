@@ -5,35 +5,51 @@ import (
 	"fmt"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/label"
+	"golang.org/x/crypto/bcrypt"
+
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/user"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type userUsecase struct {
 	userRepo       user.Repository
 	contextTimeout time.Duration
+	tracer         trace.Tracer
 }
 
 // NewUserUsecase will create new an userUsecase object representation of user.Usecase interface
-func NewUserUsecase(u user.Repository, timeout time.Duration) user.Usecase {
+func NewUserUsecase(u user.Repository, timeout time.Duration, tracer trace.Tracer) user.Usecase {
 	return &userUsecase{
 		userRepo:       u,
 		contextTimeout: timeout,
+		tracer:         tracer,
 	}
 }
 
 func (uc *userUsecase) GetByID(c context.Context, id string) (*models.User, error) {
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return nil, fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
-	}
-
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
+
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase GetByID",
+		trace.WithAttributes(
+			label.String("userid", id)),
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		return nil, fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
+	}
 
 	return uc.userRepo.GetByID(ctx, objID)
 }
@@ -42,16 +58,26 @@ func (uc *userUsecase) Update(c context.Context, updateUser models.UpdateUser, c
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase Update",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
 	u, err := uc.userRepo.GetByID(ctx, updateUser.ID)
 	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return fmt.Errorf("can't get %s user: %w", updateUser.ID.Hex(), err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(updateUser.CurrentPassword)); err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return fmt.Errorf("compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 
 	if !claims.HasRole(auth.RoleAdmin) && u.ID.Hex() != claims.Subject {
+		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
 		return web.ErrForbidden
 	}
 
@@ -66,6 +92,7 @@ func (uc *userUsecase) Update(c context.Context, updateUser models.UpdateUser, c
 	if updateUser.NewPassword != nil {
 		hashedPwd, err := generateHash(*updateUser.NewPassword)
 		if err != nil {
+			span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.NewPassword, web.ErrInternalServerError, err.Error())
 		}
 		u.HashedPassword = hashedPwd
@@ -77,8 +104,19 @@ func (uc *userUsecase) Update(c context.Context, updateUser models.UpdateUser, c
 }
 
 func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.User, error) {
+	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
+	defer cancel()
+
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase Create",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
 	hashedPwd, err := generateHash(m.Password)
 	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return nil, fmt.Errorf("can't generate hash from this password - %s: %w: %s", m.Password, web.ErrInternalServerError, err.Error())
 	}
 
@@ -91,12 +129,11 @@ func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.U
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}
-
-	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
-	defer cancel()
+	span.SetAttributes(label.String("urlid", u.ID.Hex()))
 
 	err = uc.userRepo.Create(ctx, u)
 	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return nil, err
 	}
 
@@ -104,13 +141,23 @@ func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.U
 }
 
 func (uc *userUsecase) Delete(c context.Context, id string) error {
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
-	}
-
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
+
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase Delete",
+		trace.WithAttributes(
+			label.String("userid", id)),
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		return fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
+	}
 
 	return uc.userRepo.Delete(ctx, objID)
 }
@@ -119,12 +166,22 @@ func (uc *userUsecase) Authenticate(c context.Context, now time.Time, email, pas
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
+	ctx, span := uc.tracer.Start(
+		ctx,
+		"usecase Authenticate",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
+	defer span.End()
+
 	u, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return nil, fmt.Errorf("%w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
+	span.SetAttributes(label.String("userid", u.ID.Hex()))
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password)); err != nil {
+		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return nil, fmt.Errorf("compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 
