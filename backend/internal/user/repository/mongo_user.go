@@ -107,7 +107,7 @@ func (m *mongoUserRepository) Update(ctx context.Context, user *models.User) err
 		primitive.E{Key: "_id", Value: user.ID},
 	}
 
-	doc, err := toDoc(&user)
+	doc, err := database.StructToDoc(&user)
 	if err != nil {
 		return fmt.Errorf("can't convert User to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
 	}
@@ -123,16 +123,6 @@ func (m *mongoUserRepository) Update(ctx context.Context, user *models.User) err
 	}
 
 	return nil
-}
-
-func toDoc(v interface{}) (doc *bson.D, err error) {
-	data, err := bson.Marshal(v)
-	if err != nil {
-		return doc, err
-	}
-
-	err = bson.Unmarshal(data, &doc)
-	return doc, err
 }
 
 func (m *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {

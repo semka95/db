@@ -60,3 +60,14 @@ func StatusCheck(ctx context.Context, db *mongo.Database) (*bson.M, error) {
 
 	return result, nil
 }
+
+// StructToDoc transforms any struct to bson.D document
+func StructToDoc(v interface{}) (doc *bson.D, err error) {
+	data, err := bson.Marshal(v)
+	if err != nil {
+		return doc, err
+	}
+
+	err = bson.Unmarshal(data, &doc)
+	return doc, err
+}

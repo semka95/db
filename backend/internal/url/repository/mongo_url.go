@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
 	"context"
 	"fmt"
 	"go.opentelemetry.io/otel/codes"
@@ -157,7 +158,7 @@ func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error 
 		primitive.E{Key: "_id", Value: url.ID},
 	}
 
-	doc, err := toDoc(&url)
+	doc, err := database.StructToDoc(&url)
 	if err != nil {
 		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
 		return fmt.Errorf("can't convert URL to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
@@ -177,14 +178,4 @@ func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error 
 	}
 
 	return nil
-}
-
-func toDoc(v interface{}) (doc *bson.D, err error) {
-	data, err := bson.Marshal(v)
-	if err != nil {
-		return
-	}
-
-	err = bson.Unmarshal(data, &doc)
-	return
 }
