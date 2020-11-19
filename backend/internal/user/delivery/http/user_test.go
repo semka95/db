@@ -361,7 +361,7 @@ func TestUserHTTP(t *testing.T) {
 		checkResponse func(rec *httptest.ResponseRecorder)
 	}{
 		{
-			description: "Authenticate success",
+			description: "Token success",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(&claims, nil)
 			},
@@ -375,7 +375,7 @@ func TestUserHTTP(t *testing.T) {
 			},
 		},
 		{
-			description: "Authenticate no credentials",
+			description: "Token no credentials",
 			mockCalls:   func(muc *mocks.MockUsecase) {},
 			auth:        false,
 			checkResponse: func(rec *httptest.ResponseRecorder) {
@@ -387,7 +387,7 @@ func TestUserHTTP(t *testing.T) {
 			},
 		},
 		{
-			description: "Authenticate authentication failure",
+			description: "Token authentication failure",
 			mockCalls: func(muc *mocks.MockUsecase) {
 				uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(nil, web.ErrAuthenticationFailure)
 			},
