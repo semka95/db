@@ -23,19 +23,19 @@ require (
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	go.mongodb.org/mongo-driver v1.4.2
-	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.13.0
-	go.opentelemetry.io/otel v0.13.0
-	go.opentelemetry.io/otel/exporters/otlp v0.13.0
-	go.opentelemetry.io/otel/sdk v0.13.0
+	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.14.0
+	go.opentelemetry.io/otel v0.14.0
+	go.opentelemetry.io/otel/exporters/otlp v0.14.0
+	go.opentelemetry.io/otel/sdk v0.14.0
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
-	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
-	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102 // indirect
+	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
-	golang.org/x/sys v0.0.0-20201107080550-4d91cf3a1aaf // indirect
+	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68 // indirect
 	golang.org/x/text v0.3.4 // indirect
 	golang.org/x/tools v0.0.0-20201013201025-64a9e34f3752 // indirect
-	google.golang.org/genproto v0.0.0-20201106154455-f9bfe239b0ba // indirect
+	google.golang.org/genproto v0.0.0-20201119123407-9b1e624d6bc4 // indirect
 	google.golang.org/grpc v1.33.2
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.3.0
