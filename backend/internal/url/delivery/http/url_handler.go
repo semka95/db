@@ -11,9 +11,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -93,16 +93,18 @@ func (uh *URLHandler) Redirect(c echo.Context) error {
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Redirect",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
-	u, err := uh.getByID(c)
+	u, err := uh.getByID(ctx, c)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return err
 	}
 
 	if u != nil {
+		span.SetStatus(codes.Ok, "success")
 		return c.Redirect(http.StatusMovedPermanently, u.Link)
 	}
 	return nil
@@ -117,44 +119,43 @@ func (uh *URLHandler) GetByID(c echo.Context) error {
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http GetByID",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
-	u, err := uh.getByID(c)
+	u, err := uh.getByID(ctx, c)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return err
 	}
 
 	if u != nil {
+		span.SetStatus(codes.Ok, "success")
 		return c.JSON(http.StatusOK, u)
 	}
 	return nil
 }
 
-func (uh *URLHandler) getByID(c echo.Context) (*models.URL, error) {
+func (uh *URLHandler) getByID(ctx context.Context, c echo.Context) (*models.URL, error) {
 	id := c.Param("id")
 
-	ctx := c.Request().Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http getByID",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
 	err := uh.validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return nil, c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	u, err := uh.urlUsecase.GetByID(ctx, id)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 	span.SetAttributes(
@@ -173,6 +174,7 @@ func (uh *URLHandler) Store(c echo.Context) error {
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Store",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
@@ -189,18 +191,19 @@ func (uh *URLHandler) StoreUserURL(c echo.Context) error {
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http StoreUserURL",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
 	u := new(models.CreateURL)
 	token, ok := c.Get("user").(*jwt.Token)
 	if !ok || token == nil {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	user, ok := token.Claims.(*auth.Claims)
 	if !ok {
-		span.RecordError(ctx, web.ErrInternalServerError, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrInternalServerError)
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
 	}
 
@@ -217,23 +220,24 @@ func (uh *URLHandler) storeURL(ctx context.Context, c echo.Context, u *models.Cr
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http storeURL",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
 	if err := c.Bind(u); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(u); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	result, err := uh.urlUsecase.Store(ctx, *u)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
@@ -255,29 +259,30 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Delete",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
 	err := uh.validator.V.Var(id, "required,linkid,max=20")
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	token, ok := c.Get("user").(*jwt.Token)
 	if !ok || token == nil {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	user, ok := token.Claims.(*auth.Claims)
 	if !ok {
-		span.RecordError(ctx, web.ErrInternalServerError, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrInternalServerError)
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
 	}
 
 	if err = uh.urlUsecase.Delete(ctx, id, *user); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
@@ -298,34 +303,35 @@ func (uh *URLHandler) Update(c echo.Context) error {
 	ctx, span := uh.tracer.Start(
 		ctx,
 		"http Update",
+		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
 
 	u := new(models.UpdateURL)
 	if err := c.Bind(u); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(u); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	token, ok := c.Get("user").(*jwt.Token)
 	if !ok || token == nil {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	user, ok := token.Claims.(*auth.Claims)
 	if !ok {
-		span.RecordError(ctx, web.ErrInternalServerError, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrInternalServerError)
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
 	}
 
 	if err := uh.urlUsecase.Update(ctx, *u, *user); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 

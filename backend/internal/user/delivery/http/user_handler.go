@@ -10,9 +10,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"go.opentelemetry.io/otel/api/trace"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	_MyMiddleware "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
@@ -68,7 +67,7 @@ func (uh *UserHandler) GetByID(c echo.Context) error {
 
 	u, err := uh.userUsecase.GetByID(ctx, id)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 	span.SetAttributes(
@@ -92,19 +91,19 @@ func (uh *UserHandler) Create(c echo.Context) error {
 
 	newUser := new(models.CreateUser)
 	if err := c.Bind(newUser); err != nil {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(newUser); err != nil {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	u, err := uh.userUsecase.Create(ctx, *newUser)
 	if err != nil {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 	span.SetAttributes(
@@ -129,7 +128,7 @@ func (uh *UserHandler) Delete(c echo.Context) error {
 	defer span.End()
 
 	if err := uh.userUsecase.Delete(ctx, id); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
@@ -150,29 +149,29 @@ func (uh *UserHandler) Update(c echo.Context) error {
 
 	u := new(models.UpdateUser)
 	if err := c.Bind(u); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
 
 	if err := c.Validate(u); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
 		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
 	}
 
 	token, ok := c.Get("user").(*jwt.Token)
 	if !ok || token == nil {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
 	}
 	claims, ok := token.Claims.(*auth.Claims)
 	if !ok {
-		span.RecordError(ctx, web.ErrInternalServerError, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrInternalServerError)
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
 	}
 
 	if err := uh.userUsecase.Update(ctx, *u, *claims); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
@@ -193,13 +192,13 @@ func (uh *UserHandler) Token(c echo.Context) error {
 
 	email, pass, ok := c.Request().BasicAuth()
 	if !ok {
-		span.RecordError(ctx, web.ErrBadParamInput, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrBadParamInput)
 		return c.JSON(http.StatusUnauthorized, web.ResponseError{Error: "can't get email and password using Basic auth"})
 	}
 
 	claims, err := uh.userUsecase.Authenticate(ctx, time.Now(), email, pass)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
@@ -208,7 +207,7 @@ func (uh *UserHandler) Token(c echo.Context) error {
 	}
 	tkn.Token, err = uh.authenticator.GenerateToken(*claims)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 

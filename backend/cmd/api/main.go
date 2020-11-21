@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
+	"go.opentelemetry.io/otel"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
-	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -88,11 +88,11 @@ func run(logger *zap.Logger) error {
 	}
 	defer func() {
 		if err := exp.Shutdown(ctx); err != nil {
-			global.Handle(err)
+			otel.Handle(err)
 		}
 	}()
 
-	res := resource.New(
+	res := resource.NewWithAttributes(
 		semconv.ServiceNameKey.String("shortener-management-api"),
 	)
 
@@ -105,8 +105,8 @@ func run(logger *zap.Logger) error {
 			sdktrace.WithMaxExportBatchSize(10),
 		),
 	)
-	global.SetTracerProvider(tp)
-	tracer := global.Tracer("shortener-tracer")
+	otel.SetTracerProvider(tp)
+	tracer := otel.Tracer("shortener-tracer")
 
 	// Echo configure
 	e := echo.New()

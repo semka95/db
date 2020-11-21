@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.opentelemetry.io/otel/api/trace"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -47,7 +46,7 @@ func (uc *userUsecase) GetByID(c context.Context, id string) (*models.User, erro
 
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
 	}
 
@@ -67,17 +66,17 @@ func (uc *userUsecase) Update(c context.Context, updateUser models.UpdateUser, c
 
 	u, err := uc.userRepo.GetByID(ctx, updateUser.ID)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("can't get %s user: %w", updateUser.ID.Hex(), err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(updateUser.CurrentPassword)); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 
 	if !claims.HasRole(auth.RoleAdmin) && u.ID.Hex() != claims.Subject {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return web.ErrForbidden
 	}
 
@@ -92,7 +91,7 @@ func (uc *userUsecase) Update(c context.Context, updateUser models.UpdateUser, c
 	if updateUser.NewPassword != nil {
 		hashedPwd, err := generateHash(*updateUser.NewPassword)
 		if err != nil {
-			span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+			span.RecordError(err)
 			return fmt.Errorf("can't generate hash from this password - %s: %w: %s", *updateUser.NewPassword, web.ErrInternalServerError, err.Error())
 		}
 		u.HashedPassword = hashedPwd
@@ -116,7 +115,7 @@ func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.U
 
 	hashedPwd, err := generateHash(m.Password)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("can't generate hash from this password - %s: %w: %s", m.Password, web.ErrInternalServerError, err.Error())
 	}
 
@@ -133,7 +132,7 @@ func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.U
 
 	err = uc.userRepo.Create(ctx, u)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, err
 	}
 
@@ -155,7 +154,7 @@ func (uc *userUsecase) Delete(c context.Context, id string) error {
 
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("user ID is not valid ObjectID: %w: %s", web.ErrBadParamInput, err.Error())
 	}
 
@@ -175,13 +174,13 @@ func (uc *userUsecase) Authenticate(c context.Context, now time.Time, email, pas
 
 	u, err := uc.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("%w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 	span.SetAttributes(label.String("userid", u.ID.Hex()))
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password)); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("compare password error: %w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
 

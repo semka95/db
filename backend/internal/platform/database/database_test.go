@@ -23,8 +23,7 @@ func TestStatusCheck(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	logger, err := zap.NewDevelopment()
-	require.NoError(t, err)
+	logger := zap.NewNop()
 
 	client, err := database.Open(ctx, cfg, logger)
 	require.NoError(t, err)

@@ -6,9 +6,8 @@ import (
 	"math/rand"
 	"time"
 
-	"go.opentelemetry.io/otel/api/trace"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/trace"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
@@ -45,7 +44,13 @@ func (uc *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error)
 	)
 	defer span.End()
 
-	return uc.urlRepo.GetByID(ctx, id)
+	u, err := uc.urlRepo.GetByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		return nil, err
+	}
+
+	return u, nil
 }
 
 func (uc *urlUsecase) Update(c context.Context, updateURL models.UpdateURL, user auth.Claims) error {
@@ -61,26 +66,32 @@ func (uc *urlUsecase) Update(c context.Context, updateURL models.UpdateURL, user
 
 	u, err := uc.urlRepo.GetByID(ctx, updateURL.ID)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("can't get %s user: %w", updateURL.ID, err)
 	}
 	span.SetAttributes(label.String("urlid", updateURL.ID))
 
 	if u.UserID == "" {
 		err = fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return err
 	}
 
 	if !user.HasRole(auth.RoleAdmin) && u.UserID != user.Subject {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return web.ErrForbidden
 	}
 
 	u.ExpirationDate = updateURL.ExpirationDate
 	u.UpdatedAt = time.Now().Truncate(time.Millisecond).UTC()
 
-	return uc.urlRepo.Update(ctx, u)
+	err = uc.urlRepo.Update(ctx, u)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
 }
 
 func (uc *urlUsecase) Store(c context.Context, createURL models.CreateURL) (*models.URL, error) {
@@ -96,7 +107,7 @@ func (uc *urlUsecase) Store(c context.Context, createURL models.CreateURL) (*mod
 
 	id, err := uc.getURLToken(ctx, createURL.ID)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("can't get %s user: %w", *createURL.ID, err)
 	}
 	span.SetAttributes(label.String("urlid", id))
@@ -112,7 +123,7 @@ func (uc *urlUsecase) Store(c context.Context, createURL models.CreateURL) (*mod
 
 	err = uc.urlRepo.Store(ctx, u)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, err
 	}
 
@@ -134,22 +145,28 @@ func (uc *urlUsecase) Delete(c context.Context, id string, user auth.Claims) err
 
 	u, err := uc.urlRepo.GetByID(ctx, id)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("can't get %s user: %w", id, err)
 	}
 
 	if u.UserID == "" {
 		err = fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return err
 	}
 
 	if !user.HasRole(auth.RoleAdmin) && u.UserID != user.Subject {
-		span.RecordError(ctx, web.ErrForbidden, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrForbidden)
 		return web.ErrForbidden
 	}
 
-	return uc.urlRepo.Delete(ctx, id)
+	err = uc.urlRepo.Delete(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
 }
 
 func (uc *urlUsecase) getURLToken(ctx context.Context, createID *string) (id string, err error) {
@@ -163,7 +180,7 @@ func (uc *urlUsecase) getURLToken(ctx context.Context, createID *string) (id str
 	if createID != nil {
 		_, err := uc.GetByID(ctx, *createID)
 		if err == nil {
-			span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+			span.RecordError(err)
 			return "", fmt.Errorf("can't store URL, already exists: %w", web.ErrConflict)
 		}
 

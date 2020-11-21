@@ -7,9 +7,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.opentelemetry.io/otel/api/trace"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -39,7 +38,7 @@ func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([
 
 	cur, err := m.Conn.RunCommandCursor(ctx, command)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("can't execute command: %w", err)
 	}
 
@@ -55,7 +54,7 @@ func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([
 	for cur.Next(ctx) {
 		elem := new(models.User)
 		if err := cur.Decode(elem); err != nil {
-			span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+			span.RecordError(err)
 			return nil, fmt.Errorf("can't unmarshal document into User: %w", err)
 		}
 
@@ -63,7 +62,7 @@ func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([
 	}
 
 	if err = cur.Err(); err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("user cursor error: %w", err)
 	}
 
@@ -87,12 +86,12 @@ func (m *mongoUserRepository) GetByID(ctx context.Context, id primitive.ObjectID
 
 	list, err := m.fetch(ctx, command)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("user get error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if len(list) == 0 {
-		span.RecordError(ctx, web.ErrNotFound, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrNotFound)
 		return nil, fmt.Errorf("user was not found: %w", web.ErrNotFound)
 	}
 
@@ -110,7 +109,7 @@ func (m *mongoUserRepository) Create(ctx context.Context, user *models.User) err
 
 	_, err := m.Conn.Collection("user").InsertOne(ctx, user)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("user store error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
@@ -132,13 +131,13 @@ func (m *mongoUserRepository) Delete(ctx context.Context, id primitive.ObjectID)
 
 	delRes, err := m.Conn.Collection("user").DeleteOne(ctx, filter)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("user delete error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if delRes.DeletedCount == 0 {
 		err = fmt.Errorf("user was not deleted: %w", web.ErrNoAffected)
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return err
 	}
 
@@ -159,20 +158,20 @@ func (m *mongoUserRepository) Update(ctx context.Context, user *models.User) err
 
 	doc, err := database.StructToDoc(&user)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("can't convert User to bson.D: %w, %s", web.ErrInternalServerError, err.Error())
 	}
 	update := bson.D{primitive.E{Key: "$set", Value: doc}}
 
 	updRes, err := m.Conn.Collection("user").UpdateOne(ctx, filter, update)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return fmt.Errorf("user update error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if updRes.ModifiedCount == 0 {
 		err = fmt.Errorf("user was not updated: %w", web.ErrNoAffected)
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return err
 	}
 
@@ -194,12 +193,12 @@ func (m *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*mo
 
 	list, err := m.fetch(ctx, command)
 	if err != nil {
-		span.RecordError(ctx, err, trace.WithErrorStatus(codes.Error))
+		span.RecordError(err)
 		return nil, fmt.Errorf("user get error: %w: %s", web.ErrInternalServerError, err.Error())
 	}
 
 	if len(list) == 0 {
-		span.RecordError(ctx, web.ErrNotFound, trace.WithErrorStatus(codes.Error))
+		span.RecordError(web.ErrNotFound)
 		return nil, fmt.Errorf("user with email %s was not found: %w", email, web.ErrNotFound)
 	}
 
