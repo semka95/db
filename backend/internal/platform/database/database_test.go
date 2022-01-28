@@ -60,5 +60,5 @@ func TestDatabase__ConnectionError(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = database.Open(ctx, cfg, logger)
-	assert.EqualError(t, err, "ping error: context deadline exceeded")
+	assert.Contains(t, err.Error(), "ping error")
 }
