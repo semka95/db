@@ -3,9 +3,10 @@ package tests
 import (
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
+
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // StringPointer returns pointer of a string
