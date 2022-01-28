@@ -1,5 +1,5 @@
 # Builder
-FROM golang:1.15.3-alpine3.12 as builder
+FROM golang:1.17.6-alpine3.15 as builder
 
 RUN apk update && apk upgrade && \
     apk --update add git make
@@ -14,7 +14,7 @@ COPY . .
 RUN make engine
 
 # Distribution
-FROM alpine:latest
+FROM alpine:3.15.0
 
 RUN apk update && apk upgrade && \
     apk --update --no-cache add tzdata && \
