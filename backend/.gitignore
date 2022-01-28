@@ -6,3 +6,4 @@ bin/
 data/
 .vscode
 *.pem
+graph.ps
