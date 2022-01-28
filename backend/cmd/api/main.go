@@ -12,8 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
