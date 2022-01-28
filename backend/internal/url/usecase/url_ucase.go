@@ -20,14 +20,16 @@ type urlUsecase struct {
 	urlRepo        url.Repository
 	contextTimeout time.Duration
 	tracer         trace.Tracer
+	urlExpiration  int
 }
 
 // NewURLUsecase will create new an urlUsecase object representation of url.Usecase interface
-func NewURLUsecase(u url.Repository, timeout time.Duration, tracer trace.Tracer) url.Usecase {
+func NewURLUsecase(u url.Repository, timeout time.Duration, tracer trace.Tracer, urlExpiration int) url.Usecase {
 	return &urlUsecase{
 		urlRepo:        u,
 		contextTimeout: timeout,
 		tracer:         tracer,
+		urlExpiration:  urlExpiration,
 	}
 }
 
@@ -110,12 +112,18 @@ func (uc *urlUsecase) Store(c context.Context, createURL models.CreateURL) (*mod
 		span.RecordError(err)
 		return nil, fmt.Errorf("can't get %s user: %w", *createURL.ID, err)
 	}
-	span.SetAttributes(label.String("urlid", id))
+
+	if createURL.ExpirationDate == nil {
+		expDate := time.Now().AddDate(uc.urlExpiration, 0, 0)
+		createURL.ExpirationDate = &expDate
+	}
+
+	span.SetAttributes(attribute.String("urlid", id))
 
 	u := &models.URL{
 		ID:             id,
 		Link:           createURL.Link,
-		ExpirationDate: createURL.ExpirationDate,
+		ExpirationDate: *createURL.ExpirationDate,
 		UserID:         createURL.UserID,
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),

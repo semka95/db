@@ -12,9 +12,10 @@ import (
 // Config stores app configuration
 type Config struct {
 	Server struct {
-		Address     string `yaml:"address"`
-		Timeout     int    `yaml:"timeout"`
-		OtlpAddress string `yaml:"otlp_address"`
+		Address       string `yaml:"address"`
+		Timeout       int    `yaml:"timeout"`
+		OtlpAddress   string `yaml:"otlp_address"`
+		URLExpiration int    `yaml:"url_expiration_years"`
 	} `yaml:"server"`
 	Auth struct {
 		KeyID          string `yaml:"key_id"`

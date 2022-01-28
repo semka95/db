@@ -13,6 +13,11 @@ func StringPointer(s string) *string {
 	return &s
 }
 
+// DatePointer returns pointer of a time.Time
+func DatePointer(t time.Time) *time.Time {
+	return &t
+}
+
 // NewUser creates instance of User model
 func NewUser() *models.User {
 	id, _ := primitive.ObjectIDFromHex("507f191e810c19729de860ea")
@@ -65,7 +70,7 @@ func NewCreateURL() models.CreateURL {
 	return models.CreateURL{
 		ID:             StringPointer("test123"),
 		Link:           "http://www.example.org",
-		ExpirationDate: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC(),
+		ExpirationDate: DatePointer(time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC()),
 		UserID:         "507f191e810c19729de860ea",
 	}
 }

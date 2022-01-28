@@ -28,7 +28,7 @@ func TestURLUsecase_GetByID(t *testing.T) {
 	tURL := tests.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
-	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer)
+	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer, 1)
 
 	t.Run("url not found", func(t *testing.T) {
 		repository.EXPECT().GetByID(gomock.Any(), tURL.ID).Return(nil, web.ErrNotFound)
@@ -52,7 +52,7 @@ func TestURLUsecase_Store(t *testing.T) {
 	tCreateURL := tests.NewCreateURL()
 
 	repository := mocks.NewMockRepository(controller)
-	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer)
+	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer, 1)
 
 	t.Run("success empty url ID", func(t *testing.T) {
 		tCreateURL.ID = nil
@@ -65,7 +65,7 @@ func TestURLUsecase_Store(t *testing.T) {
 
 		assert.Regexp(t, regexp.MustCompile(`^[a-zA-Z0-9-_]{6}$`), result.ID)
 		assert.Equal(t, tCreateURL.Link, result.Link)
-		assert.Equal(t, tCreateURL.ExpirationDate, result.ExpirationDate)
+		assert.Equal(t, *tCreateURL.ExpirationDate, result.ExpirationDate)
 	})
 
 	t.Run("success filled url ID", func(t *testing.T) {
@@ -79,7 +79,7 @@ func TestURLUsecase_Store(t *testing.T) {
 
 		assert.Equal(t, *tCreateURL.ID, result.ID)
 		assert.Equal(t, tCreateURL.Link, result.Link)
-		assert.Equal(t, tCreateURL.ExpirationDate, result.ExpirationDate)
+		assert.Equal(t, *tCreateURL.ExpirationDate, result.ExpirationDate)
 	})
 
 	t.Run("url already exists", func(t *testing.T) {
@@ -111,7 +111,7 @@ func TestURLUsecase_Update(t *testing.T) {
 	tURL := tests.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
-	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer)
+	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer, 1)
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
 
 	t.Run("success", func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestURLUsecase_Delete(t *testing.T) {
 	tURL := tests.NewURL()
 
 	repository := mocks.NewMockRepository(controller)
-	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer)
+	uc := usecase.NewURLUsecase(repository, 10*time.Second, tracer, 1)
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
 
 	t.Run("success", func(t *testing.T) {
