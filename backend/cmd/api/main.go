@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
-	"go.opentelemetry.io/otel"
 	"io/ioutil"
 	"log"
 	"os"
@@ -93,11 +92,6 @@ func run(logger *zap.Logger) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if err := exp.Shutdown(ctx); err != nil {
-			otel.Handle(err)
-		}
-	}()
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
