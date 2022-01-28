@@ -87,7 +87,41 @@ services:
     ports:
       - "9090:9090"
 
-  # Collector
+  # Prometheus Node Exporter
+  node-exporter:
+    image: prom/node-exporter:v1.3.1
+    container_name: node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      [
+          "--path.procfs=/host/proc",
+          "--path.rootfs=/rootfs",
+          "--path.sysfs=/host/sys",
+          "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)",
+      ]
+    ports:
+      - "9100:9100"
+
+  # Cadvisor
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.43.0
+    container_name: cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /cgroup:/cgroup:ro
+    ports:
+      - "8080:8080"
+
+  # OpenTelemetry Collector
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.43.0
     container_name: otel-collector
