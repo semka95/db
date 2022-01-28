@@ -31,7 +31,7 @@ lint-prepare:
 lint:
 	./bin/golangci-lint run \
 		--exclude-use-default=false \
-		--enable=golint \
+		--enable=revive \
 		--enable=gocyclo \
 		--enable=goconst \
 		--enable=unconvert \
