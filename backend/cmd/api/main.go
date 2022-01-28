@@ -80,7 +80,7 @@ func run(logger *zap.Logger) error {
 
 	// Initialize context
 	timeoutContext := time.Duration(cfg.Server.Timeout) * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeoutContext)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Initialize tracing
@@ -208,8 +208,8 @@ func run(logger *zap.Logger) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	shutdownCtx, cancelSrv := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelSrv()
 	if err := e.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("can't shutdownn server: %w", err)
 	}
