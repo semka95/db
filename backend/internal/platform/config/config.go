@@ -6,7 +6,7 @@ import (
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Config stores app configuration
