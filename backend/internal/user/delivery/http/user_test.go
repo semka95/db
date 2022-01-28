@@ -1,28 +1,30 @@
 package http_test
 
 import (
-	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
-	userHttp "bitbucket.org/dbproject_ivt/db/backend/internal/user/delivery/http"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt"
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
+
+	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
+	userHttp "bitbucket.org/dbproject_ivt/db/backend/internal/user/delivery/http"
+	"bitbucket.org/dbproject_ivt/db/backend/internal/user/mocks"
 )
 
 func TestUserHTTP(t *testing.T) {

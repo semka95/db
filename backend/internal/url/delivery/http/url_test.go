@@ -3,11 +3,18 @@ package http_test
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/go-playground/validator/v10"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt"
+	"github.com/golang/mock/gomock"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
@@ -15,12 +22,6 @@ import (
 	"bitbucket.org/dbproject_ivt/db/backend/internal/tests"
 	urlHttp "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
 	"bitbucket.org/dbproject_ivt/db/backend/internal/url/mocks"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/golang/mock/gomock"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 func TestURLHTTP(t *testing.T) {
@@ -525,7 +526,7 @@ func TestURLHTTP(t *testing.T) {
 			data: models.CreateURL{
 				ID:             tests.StringPointer("test123"),
 				Link:           "https://www.example.org",
-				ExpirationDate: time.Now().AddDate(0, 0, -1),
+				ExpirationDate: tests.DatePointer(time.Now().AddDate(0, 0, -1)),
 			},
 			want: "expiration_date must be greater than the current Date & Time",
 		},
