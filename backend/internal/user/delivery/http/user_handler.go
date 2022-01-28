@@ -10,7 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -71,7 +71,7 @@ func (uh *UserHandler) GetByID(c echo.Context) error {
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 	span.SetAttributes(
-		label.String("userid", u.ID.Hex()),
+		attribute.String("userid", u.ID.Hex()),
 	)
 
 	return c.JSON(http.StatusOK, u)
@@ -107,7 +107,7 @@ func (uh *UserHandler) Create(c echo.Context) error {
 		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 	span.SetAttributes(
-		label.String("userid", u.ID.Hex()),
+		attribute.String("userid", u.ID.Hex()),
 	)
 
 	return c.JSON(http.StatusCreated, u)

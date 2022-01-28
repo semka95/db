@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -78,7 +78,7 @@ func (m *mongoURLRepository) GetByID(ctx context.Context, id string) (*models.UR
 		"repository GetByID",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
-			label.String("urlid", id)),
+			attribute.String("urlid", id)),
 	)
 	defer span.End()
 
@@ -108,7 +108,7 @@ func (m *mongoURLRepository) Store(ctx context.Context, url *models.URL) error {
 		"repository Store",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
-			label.String("urlid", url.ID)),
+			attribute.String("urlid", url.ID)),
 	)
 	defer span.End()
 
@@ -127,7 +127,7 @@ func (m *mongoURLRepository) Delete(ctx context.Context, id string) error {
 		"repository Delete",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
-			label.String("urlid", id)),
+			attribute.String("urlid", id)),
 	)
 	defer span.End()
 
@@ -156,7 +156,7 @@ func (m *mongoURLRepository) Update(ctx context.Context, url *models.URL) error 
 		"repository Update",
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
-			label.String("urlid", url.ID)),
+			attribute.String("urlid", url.ID)),
 	)
 	defer span.End()
 

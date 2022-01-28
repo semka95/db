@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 
@@ -39,7 +39,7 @@ func (uc *userUsecase) GetByID(c context.Context, id string) (*models.User, erro
 		ctx,
 		"usecase GetByID",
 		trace.WithAttributes(
-			label.String("userid", id)),
+			attribute.String("userid", id)),
 		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
@@ -128,7 +128,7 @@ func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.U
 		CreatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 		UpdatedAt:      time.Now().Truncate(time.Millisecond).UTC(),
 	}
-	span.SetAttributes(label.String("urlid", u.ID.Hex()))
+	span.SetAttributes(attribute.String("urlid", u.ID.Hex()))
 
 	err = uc.userRepo.Create(ctx, u)
 	if err != nil {
@@ -147,7 +147,7 @@ func (uc *userUsecase) Delete(c context.Context, id string) error {
 		ctx,
 		"usecase Delete",
 		trace.WithAttributes(
-			label.String("userid", id)),
+			attribute.String("userid", id)),
 		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
@@ -177,7 +177,7 @@ func (uc *userUsecase) Authenticate(c context.Context, now time.Time, email, pas
 		span.RecordError(err)
 		return nil, fmt.Errorf("%w: %s", web.ErrAuthenticationFailure, err.Error())
 	}
-	span.SetAttributes(label.String("userid", u.ID.Hex()))
+	span.SetAttributes(attribute.String("userid", u.ID.Hex()))
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password)); err != nil {
 		span.RecordError(err)

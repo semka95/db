@@ -85,8 +85,13 @@ services:
 
   # Collector
   otel-collector:
-    image: otel/opentelemetry-collector:0.15.0
-    command: [ "--config=/etc/otel-collector-config.yaml", "--log-level=DEBUG", "${OTELCOL_ARGS}" ]
+    image: otel/opentelemetry-collector-contrib:0.43.0
+    container_name: otel-collector
+    command:
+      [
+          "--config=/etc/otel-collector-config.yaml",
+          "${OTELCOL_ARGS}",
+      ]
     volumes:
       - ./telemetry/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
@@ -94,7 +99,7 @@ services:
       - "8887:8888"   # Prometheus metrics exposed by the collector
       - "8889:8889"   # Prometheus exporter metrics
       - "13133:13133" # health_check extension
-      - "55680"       # Otlp receiver
+      - "4317"        # OTLP gRPC receiver
       - "55679:55679" # zpages extension
     depends_on:
       - jaeger-all-in-one

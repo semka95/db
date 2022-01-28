@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/models"
@@ -39,7 +39,7 @@ func (uc *urlUsecase) GetByID(c context.Context, id string) (*models.URL, error)
 		ctx,
 		"usecase GetByID",
 		trace.WithAttributes(
-			label.String("urlid", id)),
+			attribute.String("urlid", id)),
 		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
@@ -69,7 +69,7 @@ func (uc *urlUsecase) Update(c context.Context, updateURL models.UpdateURL, user
 		span.RecordError(err)
 		return fmt.Errorf("can't get %s user: %w", updateURL.ID, err)
 	}
-	span.SetAttributes(label.String("urlid", updateURL.ID))
+	span.SetAttributes(attribute.String("urlid", updateURL.ID))
 
 	if u.UserID == "" {
 		err = fmt.Errorf("this url was created by unauthorized user: %w", web.ErrForbidden)
@@ -138,7 +138,7 @@ func (uc *urlUsecase) Delete(c context.Context, id string, user auth.Claims) err
 		ctx,
 		"usecase Delete",
 		trace.WithAttributes(
-			label.String("urlid", id)),
+			attribute.String("urlid", id)),
 		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()

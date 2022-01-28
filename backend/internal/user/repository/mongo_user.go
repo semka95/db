@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -74,7 +74,7 @@ func (m *mongoUserRepository) GetByID(ctx context.Context, id primitive.ObjectID
 		ctx,
 		"repository GetByID",
 		trace.WithAttributes(
-			label.String("userid", id.Hex())),
+			attribute.String("userid", id.Hex())),
 	)
 	defer span.End()
 
@@ -103,7 +103,7 @@ func (m *mongoUserRepository) Create(ctx context.Context, user *models.User) err
 		ctx,
 		"repository Create",
 		trace.WithAttributes(
-			label.String("userid", user.ID.Hex())),
+			attribute.String("userid", user.ID.Hex())),
 	)
 	defer span.End()
 
@@ -121,7 +121,7 @@ func (m *mongoUserRepository) Delete(ctx context.Context, id primitive.ObjectID)
 		ctx,
 		"repository Delete",
 		trace.WithAttributes(
-			label.String("userid", id.Hex())),
+			attribute.String("userid", id.Hex())),
 	)
 	defer span.End()
 
@@ -148,7 +148,7 @@ func (m *mongoUserRepository) Update(ctx context.Context, user *models.User) err
 		ctx,
 		"repository Update",
 		trace.WithAttributes(
-			label.String("userid", user.ID.Hex())),
+			attribute.String("userid", user.ID.Hex())),
 	)
 	defer span.End()
 
@@ -202,7 +202,7 @@ func (m *mongoUserRepository) GetByEmail(ctx context.Context, email string) (*mo
 		return nil, fmt.Errorf("user with email %s was not found: %w", email, web.ErrNotFound)
 	}
 
-	span.SetAttributes(label.String("userid", list[0].ID.Hex()))
+	span.SetAttributes(attribute.String("userid", list[0].ID.Hex()))
 
 	return list[0], nil
 }

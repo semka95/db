@@ -11,6 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/trace"
@@ -159,7 +160,7 @@ func (uh *URLHandler) getByID(ctx context.Context, c echo.Context) (*models.URL,
 		return nil, c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 	span.SetAttributes(
-		label.String("urlid", id),
+		attribute.String("urlid", id),
 	)
 
 	return u, nil
@@ -210,7 +211,7 @@ func (uh *URLHandler) StoreUserURL(c echo.Context) error {
 	u.UserID = user.Subject
 
 	span.SetAttributes(
-		label.String("userid", user.Id),
+		attribute.String("userid", user.Id),
 	)
 
 	return uh.storeURL(ctx, c, u)
@@ -242,7 +243,7 @@ func (uh *URLHandler) storeURL(ctx context.Context, c echo.Context, u *models.Cr
 	}
 
 	span.SetAttributes(
-		label.String("urlid", result.ID),
+		attribute.String("urlid", result.ID),
 	)
 
 	return c.JSON(http.StatusCreated, result)
@@ -287,8 +288,8 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 	}
 
 	span.SetAttributes(
-		label.String("userid", user.Id),
-		label.String("urlid", id),
+		attribute.String("userid", user.Id),
+		attribute.String("urlid", id),
 	)
 
 	return c.JSON(http.StatusNoContent, nil)
@@ -336,8 +337,8 @@ func (uh *URLHandler) Update(c echo.Context) error {
 	}
 
 	span.SetAttributes(
-		label.String("userid", user.Id),
-		label.String("urlid", u.ID),
+		attribute.String("userid", user.Id),
+		attribute.String("urlid", u.ID),
 	)
 
 	return c.JSON(http.StatusNoContent, nil)
