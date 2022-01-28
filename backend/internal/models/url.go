@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// URL represent the URL model
+// URL represents the URL model
 type URL struct {
 	ID             string    `json:"id" bson:"_id"`
 	Link           string    `json:"link" bson:"link"`
