@@ -46,6 +46,12 @@ func GetStatusCode(err error, logger *zap.Logger) int {
 	if errors.Is(err, ErrNoAffected) {
 		return http.StatusNotFound
 	}
+	if errors.Is(err, ErrBadParamInput) {
+		return http.StatusBadRequest
+	}
+	if errors.Is(err, ErrForbidden) {
+		return http.StatusForbidden
+	}
 
 	logger.Error("Server error: ", zap.Error(err))
 	return http.StatusInternalServerError
