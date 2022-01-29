@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -112,6 +113,17 @@ func (uc *userUsecase) Create(c context.Context, m models.CreateUser) (*models.U
 		trace.WithSpanKind(trace.SpanKindServer),
 	)
 	defer span.End()
+
+	ue, err := uc.userRepo.GetByEmail(ctx, m.Email)
+	if errors.Is(err, web.ErrInternalServerError) {
+		span.RecordError(err)
+		return nil, err
+	}
+	if ue != nil && err == nil {
+		err = fmt.Errorf("user with %s email already exists, try another one, %w", m.Email, web.ErrBadParamInput)
+		span.RecordError(err)
+		return nil, err
+	}
 
 	hashedPwd, err := generateHash(m.Password)
 	if err != nil {

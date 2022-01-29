@@ -143,13 +143,30 @@ func TestUserUsecase_Create(t *testing.T) {
 	uc := usecase.NewUserUsecase(repository, 10*time.Second, tracer)
 
 	t.Run("internal server error", func(t *testing.T) {
+		repository.EXPECT().GetByEmail(gomock.Any(), tCreateUser.Email).Return(nil, web.ErrNotFound)
 		repository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(web.ErrInternalServerError)
 		result, err := uc.Create(context.Background(), tCreateUser)
 		assert.Error(t, err, web.ErrInternalServerError)
 		assert.Empty(t, result)
 	})
 
+	t.Run("email already exists", func(t *testing.T) {
+		tUser := tests.NewUser()
+		repository.EXPECT().GetByEmail(gomock.Any(), tCreateUser.Email).Return(tUser, nil)
+		result, err := uc.Create(context.Background(), tCreateUser)
+		assert.Error(t, err, web.ErrBadParamInput)
+		assert.Empty(t, result)
+	})
+
+	t.Run("email check server error", func(t *testing.T) {
+		repository.EXPECT().GetByEmail(gomock.Any(), tCreateUser.Email).Return(nil, web.ErrInternalServerError)
+		result, err := uc.Create(context.Background(), tCreateUser)
+		assert.Error(t, err, web.ErrInternalServerError)
+		assert.Empty(t, result)
+	})
+
 	t.Run("success", func(t *testing.T) {
+		repository.EXPECT().GetByEmail(gomock.Any(), tCreateUser.Email).Return(nil, web.ErrNotFound)
 		repository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 		result, err := uc.Create(context.Background(), tCreateUser)
 		assert.NoError(t, err)
