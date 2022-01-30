@@ -11,8 +11,8 @@ import (
 // Usecase represent the user's usecases
 type Usecase interface {
 	GetByID(ctx context.Context, id string) (*models.User, error)
-	Update(ctx context.Context, user *models.UpdateUser, claims auth.Claims) error
-	Create(ctx context.Context, user *models.CreateUser) (*models.User, error)
+	Update(ctx context.Context, user models.UpdateUser, claims auth.Claims) error
+	Create(ctx context.Context, user models.CreateUser) (*models.User, error)
 	Delete(ctx context.Context, id string) error
 	Authenticate(ctx context.Context, now time.Time, email, password string) (*auth.Claims, error)
 }

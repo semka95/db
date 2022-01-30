@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 )
 
 // RoleAdmin represents admin role
@@ -20,8 +20,8 @@ type Claims struct {
 }
 
 // NewClaims constructs a Claims value for the identified user
-func NewClaims(subject string, roles []string, now time.Time, expires time.Duration) *Claims {
-	c := &Claims{
+func NewClaims(subject string, roles []string, now time.Time, expires time.Duration) Claims {
+	c := Claims{
 		Roles: roles,
 		StandardClaims: jwt.StandardClaims{
 			Subject:   subject,

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
@@ -198,7 +198,7 @@ func TestJWT(t *testing.T) {
 
 func TestHasRole(t *testing.T) {
 	claims := auth.NewClaims("test user", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, *claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
 
 	t.Run("role check success", func(t *testing.T) {
 		e := echo.New()

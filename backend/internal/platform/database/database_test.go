@@ -23,8 +23,7 @@ func TestStatusCheck(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	logger, err := zap.NewDevelopment()
-	require.NoError(t, err)
+	logger := zap.NewNop()
 
 	client, err := database.Open(ctx, cfg, logger)
 	require.NoError(t, err)
@@ -61,5 +60,5 @@ func TestDatabase__ConnectionError(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = database.Open(ctx, cfg, logger)
-	assert.EqualError(t, err, "ping error: context deadline exceeded")
+	assert.Contains(t, err.Error(), "ping error")
 }

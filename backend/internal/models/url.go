@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// URL represent the URL model
+// URL represents the URL model
 type URL struct {
 	ID             string    `json:"id" bson:"_id"`
 	Link           string    `json:"link" bson:"link"`
@@ -14,10 +14,10 @@ type URL struct {
 
 // CreateURL represents data to create new URL
 type CreateURL struct {
-	ID             *string   `json:"id" validate:"omitempty,linkid,min=7,max=20"`
-	Link           string    `json:"link" validate:"required,url"`
-	ExpirationDate time.Time `json:"expiration_date" validate:"omitempty,gt"`
-	UserID         string    `json:"-"`
+	ID             *string    `json:"id" validate:"omitempty,linkid,min=7,max=20"`
+	Link           string     `json:"link" validate:"required,url"`
+	ExpirationDate *time.Time `json:"expiration_date" validate:"omitempty,gt"`
+	UserID         string     `json:"-"`
 }
 
 // UpdateURL represents data to update URL

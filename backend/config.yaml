@@ -1,7 +1,9 @@
 # Server configurations
 server:
-  address: ":9090"
+  address: ":9000"
   timeout: 20
+  otlp_address: "otel-collector:4317"
+  url_expiration_years: 5
 
   # Auth parameters
 auth:
@@ -12,6 +14,6 @@ auth:
 # MongoDB credentials
 mongo:
   name: "shortener"
-  user: ""
-  pwd: ""
-  host_port: "localhost:27017"
+  user: "admin"
+  pwd: "password"
+  host_port: "mongodb:27017"

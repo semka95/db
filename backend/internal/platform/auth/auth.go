@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4/middleware"
 )
 
@@ -90,7 +90,7 @@ func NewAuthenticator(privateKey *rsa.PrivateKey, activeKID, algorithm string, p
 }
 
 // GenerateToken generates a signed JWT token string representing the user Claims.
-func (a *Authenticator) GenerateToken(claims *Claims) (string, error) {
+func (a *Authenticator) GenerateToken(claims Claims) (string, error) {
 	method := jwt.GetSigningMethod(a.algorithm)
 
 	tkn := jwt.NewWithClaims(method, claims)

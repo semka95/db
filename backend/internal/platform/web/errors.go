@@ -10,15 +10,15 @@ import (
 
 var (
 	// ErrInternalServerError will throw if any the Internal Server Error happen
-	ErrInternalServerError = errors.New("internal Server Error")
+	ErrInternalServerError = errors.New("internal server error")
 	// ErrNotFound will throw if the requested item is not exists
-	ErrNotFound = errors.New("your requested Item is not found")
+	ErrNotFound = errors.New("your requested item is not found")
 	// ErrNoAffected will throw if no rows were affected
 	ErrNoAffected = errors.New("no rows were affected")
 	// ErrConflict will throw if the current action already exists
-	ErrConflict = errors.New("your Item already exist")
+	ErrConflict = errors.New("your item already exist")
 	// ErrBadParamInput will throw if the given request-body or params is not valid
-	ErrBadParamInput = errors.New("given Param is not valid")
+	ErrBadParamInput = errors.New("given param is not valid")
 	// ErrAuthenticationFailure will throw if authentication goes wrong
 	ErrAuthenticationFailure = errors.New("authentication failed")
 	// ErrForbidden will throw if user tries to do something that he is not
@@ -45,6 +45,12 @@ func GetStatusCode(err error, logger *zap.Logger) int {
 	}
 	if errors.Is(err, ErrNoAffected) {
 		return http.StatusNotFound
+	}
+	if errors.Is(err, ErrBadParamInput) {
+		return http.StatusBadRequest
+	}
+	if errors.Is(err, ErrForbidden) {
+		return http.StatusForbidden
 	}
 
 	logger.Error("Server error: ", zap.Error(err))

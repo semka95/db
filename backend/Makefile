@@ -3,7 +3,7 @@ test:
 	go test -v -cover -covermode=atomic ./...
 
 engine:
-	go build -o ${BINARY} cmd/main.go
+	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ${BINARY} cmd/api/main.go
 
 unittest:
 	go test -short  ./...
@@ -31,7 +31,7 @@ lint-prepare:
 lint:
 	./bin/golangci-lint run \
 		--exclude-use-default=false \
-		--enable=golint \
+		--enable=revive \
 		--enable=gocyclo \
 		--enable=goconst \
 		--enable=unconvert \

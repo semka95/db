@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -81,7 +81,10 @@ func (m *GoMiddleware) HasRole(roles ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			user := c.Get("user").(*jwt.Token)
-			claims := user.Claims.(auth.Claims)
+			claims, ok := user.Claims.(*auth.Claims)
+			if !ok {
+				return echo.NewHTTPError(http.StatusInternalServerError, "can't convert jwt.Claims to auth.Claims")
+			}
 
 			if !claims.HasRole(roles...) {
 				return echo.NewHTTPError(http.StatusForbidden, "you are not authorized for that action")

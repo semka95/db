@@ -2,18 +2,16 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"net/http"
-	"reflect"
-	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-playground/locales/en"
-	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
-	enTranslations "github.com/go-playground/validator/v10/translations/en"
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	_MyMiddleware "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
@@ -25,76 +23,32 @@ import (
 
 // UserHandler represent the http handler for user
 type UserHandler struct {
-	UserUsecase   user.Usecase
-	Authenticator *auth.Authenticator
-	Validator     *UserValidator
-	Logger        *zap.Logger
-}
-
-// UserValidator represent validation struct for user
-type UserValidator struct {
-	Uni   *ut.UniversalTranslator
-	V     *validator.Validate
-	Trans ut.Translator
+	userUsecase   user.Usecase
+	authenticator *auth.Authenticator
+	validator     *web.AppValidator
+	logger        *zap.Logger
+	tracer        trace.Tracer
 }
 
 // NewUserHandler will initialize the user/ resources endpoint
-func NewUserHandler(e *echo.Echo, us user.Usecase, authenticator *auth.Authenticator, logger *zap.Logger) error {
-	handler := &UserHandler{
-		UserUsecase:   us,
-		Authenticator: authenticator,
-		Validator:     new(UserValidator),
-		Logger:        logger,
+func NewUserHandler(us user.Usecase, authenticator *auth.Authenticator, v *web.AppValidator, logger *zap.Logger, tracer trace.Tracer) *UserHandler {
+	return &UserHandler{
+		userUsecase:   us,
+		authenticator: authenticator,
+		validator:     v,
+		logger:        logger,
+		tracer:        tracer,
 	}
-
-	err := handler.InitValidation()
-	if err != nil {
-		return err
-	}
-	e.Validator = handler.Validator
-
-	myMiddl := _MyMiddleware.InitMiddleware(logger)
-
-	e.POST("/v1/user/create", handler.Create)
-	e.GET("/v1/user/:id", handler.GetByID, middleware.JWTWithConfig(authenticator.JWTConfig))
-	e.GET("v1/user/token", handler.Token)
-	e.DELETE("/v1/user/:id", handler.Delete, middleware.JWTWithConfig(authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
-	e.PUT("/v1/user/", handler.Update, middleware.JWTWithConfig(authenticator.JWTConfig))
-
-	return nil
 }
 
-// Validate serving to be called by Echo to validate user
-func (uv *UserValidator) Validate(i interface{}) error {
-	return uv.V.Struct(i)
-}
-
-// InitValidation will initialize validation for user handler
-func (uh *UserHandler) InitValidation() error {
-	translator := en.New()
-	uh.Validator.Uni = ut.New(translator, translator)
-	var found bool
-	uh.Validator.Trans, found = uh.Validator.Uni.GetTranslator("en")
-	if !found {
-		uh.Validator.Trans = uh.Validator.Uni.GetFallback()
-	}
-
-	uh.Validator.V = validator.New()
-
-	err := enTranslations.RegisterDefaultTranslations(uh.Validator.V, uh.Validator.Trans)
-	if err != nil {
-		return err
-	}
-
-	uh.Validator.V.RegisterTagNameFunc(func(fld reflect.StructField) string {
-		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-		if name == "-" {
-			return ""
-		}
-		return name
-	})
-
-	return nil
+// RegisterRoutes registers routes for a path with matching handler
+func (uh *UserHandler) RegisterRoutes(e *echo.Echo) {
+	myMiddl := _MyMiddleware.InitMiddleware(uh.logger)
+	e.POST("/v1/user/create", uh.Create)
+	e.GET("/v1/user/:id", uh.GetByID, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
+	e.GET("v1/user/token", uh.Token)
+	e.DELETE("/v1/user/:id", uh.Delete, middleware.JWTWithConfig(uh.authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
+	e.PUT("/v1/user", uh.Update, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
 }
 
 // GetByID will get user by given id
@@ -105,36 +59,56 @@ func (uh *UserHandler) GetByID(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx, span := uh.tracer.Start(
+		ctx,
+		"http GetByID",
+	)
+	defer span.End()
 
-	u, err := uh.UserUsecase.GetByID(ctx, id)
+	u, err := uh.userUsecase.GetByID(ctx, id)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
+		span.RecordError(err)
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
+	span.SetAttributes(
+		attribute.String("userid", u.ID.Hex()),
+	)
 
 	return c.JSON(http.StatusOK, u)
 }
 
 // Create will store the User by given request body
 func (uh *UserHandler) Create(c echo.Context) error {
-	newUser := new(models.CreateUser)
-	if err := c.Bind(newUser); err != nil {
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
-	}
-
-	if err := c.Validate(newUser); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
-	}
-
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx, span := uh.tracer.Start(
+		ctx,
+		"http Create",
+	)
+	defer span.End()
 
-	u, err := uh.UserUsecase.Create(ctx, newUser)
-	if err != nil {
-		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
+	newUser := new(models.CreateUser)
+	if err := c.Bind(newUser); err != nil {
+		span.RecordError(web.ErrForbidden)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
 	}
+
+	if err := c.Validate(newUser); err != nil {
+		span.RecordError(web.ErrForbidden)
+		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
+	}
+
+	u, err := uh.userUsecase.Create(ctx, *newUser)
+	if err != nil {
+		span.RecordError(web.ErrForbidden)
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
+	}
+	span.SetAttributes(
+		attribute.String("userid", u.ID.Hex()),
+	)
 
 	return c.JSON(http.StatusCreated, u)
 }
@@ -147,9 +121,15 @@ func (uh *UserHandler) Delete(c echo.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx, span := uh.tracer.Start(
+		ctx,
+		"http Delete",
+	)
+	defer span.End()
 
-	if err := uh.UserUsecase.Delete(ctx, id); err != nil {
-		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
+	if err := uh.userUsecase.Delete(ctx, id); err != nil {
+		span.RecordError(err)
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
@@ -157,29 +137,42 @@ func (uh *UserHandler) Delete(c echo.Context) error {
 
 // Update will update the User by given request body
 func (uh *UserHandler) Update(c echo.Context) error {
-	u := new(models.UpdateUser)
-	if err := c.Bind(u); err != nil {
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
-	}
-
-	if err := c.Validate(u); err != nil {
-		fields := err.(validator.ValidationErrors).Translate(uh.Validator.Trans)
-		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
-	}
-
-	token, ok := c.Get("user").(*jwt.Token)
-	if !ok {
-		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
-	}
-	claims := token.Claims.(auth.Claims)
-
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx, span := uh.tracer.Start(
+		ctx,
+		"http Update",
+	)
+	defer span.End()
 
-	if err := uh.UserUsecase.Update(ctx, u, claims); err != nil {
-		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
+	u := new(models.UpdateUser)
+	if err := c.Bind(u); err != nil {
+		span.RecordError(err)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: err.Error()})
+	}
+
+	if err := c.Validate(u); err != nil {
+		span.RecordError(err)
+		fields := err.(validator.ValidationErrors).Translate(uh.validator.Translator)
+		return c.JSON(http.StatusBadRequest, web.ResponseError{Error: "validation error", Fields: fields})
+	}
+
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok || token == nil {
+		span.RecordError(web.ErrForbidden)
+		return c.JSON(http.StatusForbidden, web.ResponseError{Error: web.ErrForbidden.Error()})
+	}
+	claims, ok := token.Claims.(*auth.Claims)
+	if !ok {
+		span.RecordError(web.ErrInternalServerError)
+		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", web.ErrInternalServerError)
+	}
+
+	if err := uh.userUsecase.Update(ctx, *u, *claims); err != nil {
+		span.RecordError(err)
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusNoContent, nil)
@@ -187,27 +180,35 @@ func (uh *UserHandler) Update(c echo.Context) error {
 
 // Token will return jwt token by given credentials
 func (uh *UserHandler) Token(c echo.Context) error {
-	email, pass, ok := c.Request().BasicAuth()
-	if !ok {
-		return c.JSON(http.StatusUnauthorized, web.ResponseError{Error: "can't get email and password using Basic auth"})
-	}
-
 	ctx := c.Request().Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	ctx, span := uh.tracer.Start(
+		ctx,
+		"http Token",
+	)
+	defer span.End()
 
-	claims, err := uh.UserUsecase.Authenticate(ctx, time.Now(), email, pass)
+	email, pass, ok := c.Request().BasicAuth()
+	if !ok {
+		span.RecordError(web.ErrBadParamInput)
+		return c.JSON(http.StatusUnauthorized, web.ResponseError{Error: "can't get email and password using Basic auth"})
+	}
+
+	claims, err := uh.userUsecase.Authenticate(ctx, time.Now(), email, pass)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
+		span.RecordError(err)
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	var tkn struct {
 		Token string `json:"token"`
 	}
-	tkn.Token, err = uh.Authenticator.GenerateToken(claims)
+	tkn.Token, err = uh.authenticator.GenerateToken(*claims)
 	if err != nil {
-		return c.JSON(web.GetStatusCode(err, uh.Logger), web.ResponseError{Error: err.Error()})
+		span.RecordError(err)
+		return c.JSON(web.GetStatusCode(err, uh.logger), web.ResponseError{Error: err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, tkn)

@@ -6,14 +6,16 @@ import (
 
 	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Config stores app configuration
 type Config struct {
 	Server struct {
-		Address string `yaml:"address"`
-		Timeout int    `yaml:"timeout"`
+		Address       string `yaml:"address"`
+		Timeout       int    `yaml:"timeout"`
+		OtlpAddress   string `yaml:"otlp_address"`
+		URLExpiration int    `yaml:"url_expiration_years"`
 	} `yaml:"server"`
 	Auth struct {
 		KeyID          string `yaml:"key_id"`
