@@ -12,14 +12,14 @@ import (
 	"os"
 	"time"
 
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/config"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/schema"
 	"github.com/golang-migrate/migrate/v4"
 	dStub "github.com/golang-migrate/migrate/v4/database/mongodb"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
+
+	"github.com/semka95/shortener/backend/cmd"
+	"github.com/semka95/shortener/backend/store"
 )
 
 func main() {
@@ -49,7 +49,7 @@ func run(logger *zap.Logger) error {
 	if !ok {
 		return fmt.Errorf("CONFIG environment variable is not specified")
 	}
-	cfg, err := config.AppConfig(configPath, logger)
+	cfg, err := cmd.AppConfig(configPath, logger)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func run(logger *zap.Logger) error {
 
 	// Start database
 	cfg.MongoConfig.HostPort = "localhost:27017"
-	client, err := database.Open(ctx, cfg.MongoConfig, logger)
+	client, err := store.Open(ctx, cfg.MongoConfig, logger)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func run(logger *zap.Logger) error {
 	case "migrate_mongo":
 		err = migrateMongo(client, cfg.MongoConfig.Name)
 	case "seed":
-		err = schema.Seed(ctx, client.Database(cfg.MongoConfig.Name))
+		err = store.Seed(ctx, client.Database(cfg.MongoConfig.Name))
 	case "keygen":
 		err = keygen(os.Args[2], logger)
 	default:

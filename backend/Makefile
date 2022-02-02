@@ -38,10 +38,8 @@ lint:
 		./...
 
 generate-mocks:
-	mockgen -source=./internal/url/repository.go -destination=./internal/url/mocks/Repository.go -package=mocks
-	mockgen -source=./internal/url/usecase.go -destination=./internal/url/mocks/Usecase.go -package=mocks
-	mockgen -source=./internal/user/repository.go -destination=./internal/user/mocks/Repository.go -package=mocks
-	mockgen -source=./internal/user/usecase.go -destination=./internal/user/mocks/Usecase.go -package=mocks
+	mockgen -source=./domain/url.go -destination=./url/mock/mock.go -package=mock
+	mockgen -source=./domain/user.go -destination=./user/mock/mock.go -package=mock
 
 authkey:
 	go run ./cmd/admin/main.go keygen ./private.pem

@@ -28,18 +28,18 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	_MyMiddleware "bitbucket.org/dbproject_ivt/db/backend/internal/middleware"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/auth"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/config"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/database"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/metrics"
-	"bitbucket.org/dbproject_ivt/db/backend/internal/platform/web"
-	_URLHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/url/delivery/http"
-	_URLRepo "bitbucket.org/dbproject_ivt/db/backend/internal/url/repository"
-	_URLUcase "bitbucket.org/dbproject_ivt/db/backend/internal/url/usecase"
-	_UserHttpDelivery "bitbucket.org/dbproject_ivt/db/backend/internal/user/delivery/http"
-	_UserRepo "bitbucket.org/dbproject_ivt/db/backend/internal/user/repository"
-	_UserUcase "bitbucket.org/dbproject_ivt/db/backend/internal/user/usecase"
+	"github.com/semka95/shortener/backend/cmd"
+	"github.com/semka95/shortener/backend/metrics"
+	_MyMiddleware "github.com/semka95/shortener/backend/middleware"
+	"github.com/semka95/shortener/backend/store"
+	_URLHttpDelivery "github.com/semka95/shortener/backend/url/delivery/http"
+	_URLRepo "github.com/semka95/shortener/backend/url/repository"
+	_URLUcase "github.com/semka95/shortener/backend/url/usecase"
+	_UserHttpDelivery "github.com/semka95/shortener/backend/user/delivery/http"
+	_UserRepo "github.com/semka95/shortener/backend/user/repository"
+	_UserUcase "github.com/semka95/shortener/backend/user/usecase"
+	"github.com/semka95/shortener/backend/web"
+	"github.com/semka95/shortener/backend/web/auth"
 )
 
 func main() {
@@ -67,7 +67,7 @@ func run(logger *zap.Logger) error {
 		return fmt.Errorf("SHORTENER_CONFIG environment variable is not specified")
 	}
 	logger.Info("Config path", zap.String(configPath, configPath))
-	cfg, err := config.AppConfig(configPath, logger)
+	cfg, err := cmd.AppConfig(configPath, logger)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func run(logger *zap.Logger) error {
 	e.Use(metrics.Middleware(metrics.WithMeterProvider(pusher)))
 
 	// Start database
-	client, err := database.Open(ctx, cfg.MongoConfig, logger)
+	client, err := store.Open(ctx, cfg.MongoConfig, logger)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func run(logger *zap.Logger) error {
 	ush.RegisterRoutes(e)
 
 	// Status check
-	database.NewStatusHandler(e, client.Database(cfg.MongoConfig.Name))
+	store.NewStatusHandler(e, client.Database(cfg.MongoConfig.Name))
 
 	go func() {
 		if err := e.Start(cfg.Server.Address); err != nil {

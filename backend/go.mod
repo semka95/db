@@ -1,4 +1,4 @@
-module bitbucket.org/dbproject_ivt/db/backend
+module github.com/semka95/shortener/backend
 
 go 1.17
 
