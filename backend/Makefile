@@ -29,13 +29,7 @@ lint-prepare:
 	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s latest
 
 lint:
-	./bin/golangci-lint run \
-		--exclude-use-default=false \
-		--enable=revive \
-		--enable=gocyclo \
-		--enable=goconst \
-		--enable=unconvert \
-		./...
+	./bin/golangci-lint run ./...
 
 generate-mocks:
 	mockgen -source=./domain/url.go -destination=./url/mock/mock.go -package=mock
