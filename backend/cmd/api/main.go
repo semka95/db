@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -46,7 +45,7 @@ func main() {
 	logger, err := zap.NewDevelopment(zap.AddCaller())
 	if err != nil {
 		log.Println("can't create logger: ", err)
-		os.Exit(1)
+		return
 	}
 	defer func() {
 		// do not need to check for errors
@@ -55,7 +54,6 @@ func main() {
 
 	if err := run(logger); err != nil {
 		logger.Error("shutting down, error: ", zap.Error(err))
-		os.Exit(1)
 	}
 }
 
@@ -111,10 +109,10 @@ func run(logger *zap.Logger) error {
 	otel.SetTracerProvider(tp)
 	tracer := otel.Tracer("shortener-tracer")
 	defer func() {
-		if err := tp.Shutdown(ctx); err != nil {
+		if err = tp.Shutdown(ctx); err != nil {
 			logger.Error("shutdown tracer provider", zap.Error(err))
 		}
-		if err := traceExporter.Shutdown(ctx); err != nil {
+		if err = traceExporter.Shutdown(ctx); err != nil {
 			logger.Error("shutdown tracing exporter", zap.Error(err))
 		}
 	}()
@@ -136,10 +134,10 @@ func run(logger *zap.Logger) error {
 	global.SetMeterProvider(meterProvider)
 
 	defer func() {
-		if err := meterProvider.Shutdown(ctx); err != nil {
+		if err = meterProvider.Shutdown(ctx); err != nil {
 			logger.Error("shutdown meter provider", zap.Error(err))
 		}
-		if err := metricExporter.Shutdown(ctx); err != nil {
+		if err = metricExporter.Shutdown(ctx); err != nil {
 			logger.Error("shutdown metric exporter", zap.Error(err))
 		}
 	}()
@@ -198,7 +196,7 @@ func run(logger *zap.Logger) error {
 		}
 	}()
 
-	// Gracefull shutdown
+	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
@@ -212,7 +210,7 @@ func run(logger *zap.Logger) error {
 }
 
 func createAuth(privateKeyFile, keyID, algorithm string) (*auth.Authenticator, error) {
-	keyContents, err := ioutil.ReadFile(privateKeyFile)
+	keyContents, err := os.ReadFile(privateKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("can't read auth private key: %w", err)
 	}

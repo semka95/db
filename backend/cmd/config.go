@@ -33,7 +33,7 @@ func AppConfig(cfgPath string, logger *zap.Logger) (*Config, error) {
 		return nil, fmt.Errorf("can't open config file: %w", err)
 	}
 	defer func() {
-		err := f.Close()
+		err = f.Close()
 		if err != nil {
 			logger.Error("can't close config file: %w", zap.Error(err))
 		}

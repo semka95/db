@@ -41,7 +41,7 @@ func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([
 	}
 
 	defer func(ctx context.Context) {
-		err := cur.Close(ctx)
+		err = cur.Close(ctx)
 		if err != nil {
 			m.logger.Error("Can't close cursor: ", zap.Error(err))
 		}
@@ -51,7 +51,7 @@ func (m *mongoUserRepository) fetch(ctx context.Context, command interface{}) ([
 
 	for cur.Next(ctx) {
 		elem := new(domain.User)
-		if err := cur.Decode(elem); err != nil {
+		if err = cur.Decode(elem); err != nil {
 			span.RecordError(err)
 			return nil, fmt.Errorf("can't unmarshal document into User: %w", err)
 		}

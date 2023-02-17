@@ -26,7 +26,7 @@ import (
 
 func TestURLHTTP(t *testing.T) {
 	claims := auth.NewClaims("507f191e810c19729de860ea", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	controller := gomock.NewController(t)
 	defer controller.Finish()

@@ -280,7 +280,7 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", domain.ErrInternalServerError)
 	}
 
-	if err = uh.urlUsecase.Delete(ctx, id, *user); err != nil {
+	if err = uh.urlUsecase.Delete(ctx, id, user); err != nil {
 		span.RecordError(err)
 		return c.JSON(domain.GetStatusCode(err, uh.logger), domain.ResponseError{Error: err.Error()})
 	}
@@ -329,7 +329,7 @@ func (uh *URLHandler) Update(c echo.Context) error {
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", domain.ErrInternalServerError)
 	}
 
-	if err := uh.urlUsecase.Update(ctx, *u, *user); err != nil {
+	if err := uh.urlUsecase.Update(ctx, *u, user); err != nil {
 		span.RecordError(err)
 		return c.JSON(domain.GetStatusCode(err, uh.logger), domain.ResponseError{Error: err.Error()})
 	}

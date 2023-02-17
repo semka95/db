@@ -52,7 +52,7 @@ func (uc *urlUsecase) GetByID(c context.Context, id string) (*domain.URL, error)
 	return u, nil
 }
 
-func (uc *urlUsecase) Update(c context.Context, updateURL domain.UpdateURL, user auth.Claims) error {
+func (uc *urlUsecase) Update(c context.Context, updateURL domain.UpdateURL, user *auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
@@ -135,7 +135,7 @@ func (uc *urlUsecase) Store(c context.Context, createURL domain.CreateURL) (*dom
 	return u, nil
 }
 
-func (uc *urlUsecase) Delete(c context.Context, id string, user auth.Claims) error {
+func (uc *urlUsecase) Delete(c context.Context, id string, user *auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
@@ -183,7 +183,7 @@ func (uc *urlUsecase) getURLToken(ctx context.Context, createID *string) (id str
 	defer span.End()
 
 	if createID != nil {
-		_, err := uc.GetByID(ctx, *createID)
+		_, err = uc.GetByID(ctx, *createID)
 		if err == nil {
 			span.RecordError(err)
 			return "", fmt.Errorf("can't store URL, already exists: %w", domain.ErrConflict)

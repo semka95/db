@@ -6,36 +6,51 @@ package mock
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	domain "github.com/semka95/shortener/backend/domain"
 	auth "github.com/semka95/shortener/backend/web/auth"
-	reflect "reflect"
 )
 
-// MockURLUsecase is a mock of URLUsecase interface
+// MockURLUsecase is a mock of URLUsecase interface.
 type MockURLUsecase struct {
 	ctrl     *gomock.Controller
 	recorder *MockURLUsecaseMockRecorder
 }
 
-// MockURLUsecaseMockRecorder is the mock recorder for MockURLUsecase
+// MockURLUsecaseMockRecorder is the mock recorder for MockURLUsecase.
 type MockURLUsecaseMockRecorder struct {
 	mock *MockURLUsecase
 }
 
-// NewMockURLUsecase creates a new mock instance
+// NewMockURLUsecase creates a new mock instance.
 func NewMockURLUsecase(ctrl *gomock.Controller) *MockURLUsecase {
 	mock := &MockURLUsecase{ctrl: ctrl}
 	mock.recorder = &MockURLUsecaseMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockURLUsecase) EXPECT() *MockURLUsecaseMockRecorder {
 	return m.recorder
 }
 
-// GetByID mocks base method
+// Delete mocks base method.
+func (m *MockURLUsecase) Delete(ctx context.Context, id string, user *auth.Claims) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id, user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockURLUsecaseMockRecorder) Delete(ctx, id, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockURLUsecase)(nil).Delete), ctx, id, user)
+}
+
+// GetByID mocks base method.
 func (m *MockURLUsecase) GetByID(ctx context.Context, id string) (*domain.URL, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByID", ctx, id)
@@ -44,27 +59,13 @@ func (m *MockURLUsecase) GetByID(ctx context.Context, id string) (*domain.URL, e
 	return ret0, ret1
 }
 
-// GetByID indicates an expected call of GetByID
+// GetByID indicates an expected call of GetByID.
 func (mr *MockURLUsecaseMockRecorder) GetByID(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockURLUsecase)(nil).GetByID), ctx, id)
 }
 
-// Update mocks base method
-func (m *MockURLUsecase) Update(ctx context.Context, updateURL domain.UpdateURL, user auth.Claims) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, updateURL, user)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Update indicates an expected call of Update
-func (mr *MockURLUsecaseMockRecorder) Update(ctx, updateURL, user interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockURLUsecase)(nil).Update), ctx, updateURL, user)
-}
-
-// Store mocks base method
+// Store mocks base method.
 func (m *MockURLUsecase) Store(ctx context.Context, createURL domain.CreateURL) (*domain.URL, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Store", ctx, createURL)
@@ -73,50 +74,64 @@ func (m *MockURLUsecase) Store(ctx context.Context, createURL domain.CreateURL) 
 	return ret0, ret1
 }
 
-// Store indicates an expected call of Store
+// Store indicates an expected call of Store.
 func (mr *MockURLUsecaseMockRecorder) Store(ctx, createURL interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Store", reflect.TypeOf((*MockURLUsecase)(nil).Store), ctx, createURL)
 }
 
-// Delete mocks base method
-func (m *MockURLUsecase) Delete(ctx context.Context, id string, user auth.Claims) error {
+// Update mocks base method.
+func (m *MockURLUsecase) Update(ctx context.Context, updateURL domain.UpdateURL, user *auth.Claims) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, id, user)
+	ret := m.ctrl.Call(m, "Update", ctx, updateURL, user)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Delete indicates an expected call of Delete
-func (mr *MockURLUsecaseMockRecorder) Delete(ctx, id, user interface{}) *gomock.Call {
+// Update indicates an expected call of Update.
+func (mr *MockURLUsecaseMockRecorder) Update(ctx, updateURL, user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockURLUsecase)(nil).Delete), ctx, id, user)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockURLUsecase)(nil).Update), ctx, updateURL, user)
 }
 
-// MockURLRepository is a mock of URLRepository interface
+// MockURLRepository is a mock of URLRepository interface.
 type MockURLRepository struct {
 	ctrl     *gomock.Controller
 	recorder *MockURLRepositoryMockRecorder
 }
 
-// MockURLRepositoryMockRecorder is the mock recorder for MockURLRepository
+// MockURLRepositoryMockRecorder is the mock recorder for MockURLRepository.
 type MockURLRepositoryMockRecorder struct {
 	mock *MockURLRepository
 }
 
-// NewMockURLRepository creates a new mock instance
+// NewMockURLRepository creates a new mock instance.
 func NewMockURLRepository(ctrl *gomock.Controller) *MockURLRepository {
 	mock := &MockURLRepository{ctrl: ctrl}
 	mock.recorder = &MockURLRepositoryMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockURLRepository) EXPECT() *MockURLRepositoryMockRecorder {
 	return m.recorder
 }
 
-// GetByID mocks base method
+// Delete mocks base method.
+func (m *MockURLRepository) Delete(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockURLRepositoryMockRecorder) Delete(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockURLRepository)(nil).Delete), ctx, id)
+}
+
+// GetByID mocks base method.
 func (m *MockURLRepository) GetByID(ctx context.Context, id string) (*domain.URL, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByID", ctx, id)
@@ -125,27 +140,13 @@ func (m *MockURLRepository) GetByID(ctx context.Context, id string) (*domain.URL
 	return ret0, ret1
 }
 
-// GetByID indicates an expected call of GetByID
+// GetByID indicates an expected call of GetByID.
 func (mr *MockURLRepositoryMockRecorder) GetByID(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockURLRepository)(nil).GetByID), ctx, id)
 }
 
-// Update mocks base method
-func (m *MockURLRepository) Update(ctx context.Context, url *domain.URL) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, url)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Update indicates an expected call of Update
-func (mr *MockURLRepositoryMockRecorder) Update(ctx, url interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockURLRepository)(nil).Update), ctx, url)
-}
-
-// Store mocks base method
+// Store mocks base method.
 func (m *MockURLRepository) Store(ctx context.Context, u *domain.URL) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Store", ctx, u)
@@ -153,22 +154,22 @@ func (m *MockURLRepository) Store(ctx context.Context, u *domain.URL) error {
 	return ret0
 }
 
-// Store indicates an expected call of Store
+// Store indicates an expected call of Store.
 func (mr *MockURLRepositoryMockRecorder) Store(ctx, u interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Store", reflect.TypeOf((*MockURLRepository)(nil).Store), ctx, u)
 }
 
-// Delete mocks base method
-func (m *MockURLRepository) Delete(ctx context.Context, id string) error {
+// Update mocks base method.
+func (m *MockURLRepository) Update(ctx context.Context, url *domain.URL) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", ctx, id)
+	ret := m.ctrl.Call(m, "Update", ctx, url)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Delete indicates an expected call of Delete
-func (mr *MockURLRepositoryMockRecorder) Delete(ctx, id interface{}) *gomock.Call {
+// Update indicates an expected call of Update.
+func (mr *MockURLRepositoryMockRecorder) Update(ctx, url interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockURLRepository)(nil).Delete), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockURLRepository)(nil).Update), ctx, url)
 }

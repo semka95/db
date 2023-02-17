@@ -52,7 +52,7 @@ func (uc *userUsecase) GetByID(c context.Context, id string) (*domain.User, erro
 	return uc.userRepo.GetByID(ctx, objID)
 }
 
-func (uc *userUsecase) Update(c context.Context, updateUser domain.UpdateUser, claims auth.Claims) error {
+func (uc *userUsecase) Update(c context.Context, updateUser domain.UpdateUser, claims *auth.Claims) error {
 	ctx, cancel := context.WithTimeout(c, uc.contextTimeout)
 	defer cancel()
 
@@ -195,7 +195,7 @@ func (uc *userUsecase) Authenticate(c context.Context, now time.Time, email, pas
 	}
 
 	claims := auth.NewClaims(u.ID.Hex(), u.Roles, now, time.Hour)
-	return &claims, nil
+	return claims, nil
 }
 
 func generateHash(pass string) (string, error) {

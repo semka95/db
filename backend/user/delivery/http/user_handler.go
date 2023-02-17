@@ -169,7 +169,7 @@ func (uh *UserHandler) Update(c echo.Context) error {
 		return fmt.Errorf("%w can't convert jwt.Claims to auth.Claims", domain.ErrInternalServerError)
 	}
 
-	if err := uh.userUsecase.Update(ctx, *u, *claims); err != nil {
+	if err := uh.userUsecase.Update(ctx, *u, claims); err != nil {
 		span.RecordError(err)
 		return c.JSON(domain.GetStatusCode(err, uh.logger), domain.ResponseError{Error: err.Error()})
 	}
@@ -204,7 +204,7 @@ func (uh *UserHandler) Token(c echo.Context) error {
 	var tkn struct {
 		Token string `json:"token"`
 	}
-	tkn.Token, err = uh.authenticator.GenerateToken(*claims)
+	tkn.Token, err = uh.authenticator.GenerateToken(claims)
 	if err != nil {
 		span.RecordError(err)
 		return c.JSON(domain.GetStatusCode(err, uh.logger), domain.ResponseError{Error: err.Error()})

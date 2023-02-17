@@ -45,7 +45,7 @@ func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]
 	}
 
 	defer func(ctx context.Context) {
-		err := cur.Close(ctx)
+		err = cur.Close(ctx)
 		if err != nil {
 			m.logger.Error("can't close cursor: ", zap.Error(err))
 		}
@@ -55,7 +55,7 @@ func (m *mongoURLRepository) fetch(ctx context.Context, command interface{}) ([]
 
 	for cur.Next(ctx) {
 		elem := new(domain.URL)
-		if err := cur.Decode(elem); err != nil {
+		if err = cur.Decode(elem); err != nil {
 			span.RecordError(err)
 			return nil, fmt.Errorf("can't unmarshal document into URL: %w", err)
 		}

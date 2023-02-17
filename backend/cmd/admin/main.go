@@ -27,29 +27,25 @@ func main() {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Println("can't create logger: ", err)
-		os.Exit(1)
+		return
 	}
-	defer func() {
-		err := logger.Sync()
-		if err != nil {
-			log.Println("can't close logger: ", err)
-			os.Exit(1)
-		}
-	}()
+	defer logger.Sync()
 
 	if err := run(logger); err != nil {
 		logger.Error("shutting down, error: ", zap.Error(err))
-		os.Exit(1)
 	}
 }
 
 func run(logger *zap.Logger) error {
 	// Configuration
 	configPath, ok := os.LookupEnv("CONFIG")
+
 	if !ok {
 		return fmt.Errorf("CONFIG environment variable is not specified")
 	}
+
 	cfg, err := cmd.AppConfig(configPath, logger)
+
 	if err != nil {
 		return err
 	}
@@ -86,6 +82,7 @@ func run(logger *zap.Logger) error {
 	}
 
 	if err != nil {
+		fmt.Println("done")
 		return err
 	}
 
@@ -99,7 +96,7 @@ func migrateMongo(db *mongo.Client, dbName string) error {
 	}
 
 	// change this to something else
-	m, err := migrate.NewWithDatabaseInstance("file://./internal/schema/migrations", dbName, instance)
+	m, err := migrate.NewWithDatabaseInstance("file://./store/migrations", dbName, instance)
 	if err != nil {
 		return err
 	}

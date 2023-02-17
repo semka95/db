@@ -121,7 +121,7 @@ func TestLogger(t *testing.T) {
 }
 
 func TestJWT(t *testing.T) {
-	key, err := rsa.GenerateKey(rand.Reader, 512)
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 
 	kid := "4754d86b-7a6d-4df5-9c65-224741361492"
@@ -198,7 +198,7 @@ func TestJWT(t *testing.T) {
 
 func TestHasRole(t *testing.T) {
 	claims := auth.NewClaims("test user", []string{auth.RoleUser}, time.Now(), time.Minute)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	t.Run("role check success", func(t *testing.T) {
 		e := echo.New()

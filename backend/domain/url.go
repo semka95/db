@@ -34,9 +34,9 @@ type UpdateURL struct {
 // URLUsecase represents the URL's usecases
 type URLUsecase interface {
 	GetByID(ctx context.Context, id string) (*URL, error)
-	Update(ctx context.Context, updateURL UpdateURL, user auth.Claims) error
+	Update(ctx context.Context, updateURL UpdateURL, user *auth.Claims) error
 	Store(ctx context.Context, createURL CreateURL) (*URL, error)
-	Delete(ctx context.Context, id string, user auth.Claims) error
+	Delete(ctx context.Context, id string, user *auth.Claims) error
 }
 
 // URLRepository represents the URL's repository contract

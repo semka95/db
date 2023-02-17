@@ -20,8 +20,8 @@ type Claims struct {
 }
 
 // NewClaims constructs a Claims value for the identified user
-func NewClaims(subject string, roles []string, now time.Time, expires time.Duration) Claims {
-	c := Claims{
+func NewClaims(subject string, roles []string, now time.Time, expires time.Duration) *Claims {
+	c := &Claims{
 		Roles: roles,
 		StandardClaims: jwt.StandardClaims{
 			Subject:   subject,
@@ -34,7 +34,7 @@ func NewClaims(subject string, roles []string, now time.Time, expires time.Durat
 }
 
 // HasRole returns true if the claims has at least one of the provided roles.
-func (c Claims) HasRole(roles ...string) bool {
+func (c *Claims) HasRole(roles ...string) bool {
 	for _, has := range c.Roles {
 		for _, want := range roles {
 			if has == want {

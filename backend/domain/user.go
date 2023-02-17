@@ -39,7 +39,7 @@ type UpdateUser struct {
 // UserUsecase represents the User's usecases
 type UserUsecase interface {
 	GetByID(ctx context.Context, id string) (*User, error)
-	Update(ctx context.Context, user UpdateUser, claims auth.Claims) error
+	Update(ctx context.Context, user UpdateUser, claims *auth.Claims) error
 	Create(ctx context.Context, user CreateUser) (*User, error)
 	Delete(ctx context.Context, id string) error
 	Authenticate(ctx context.Context, now time.Time, email, password string) (*auth.Claims, error)

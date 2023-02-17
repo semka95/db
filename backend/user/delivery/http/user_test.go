@@ -31,7 +31,7 @@ func TestUserHTTP(t *testing.T) {
 	tUser := tests.NewUser()
 	password := "password"
 	claims := auth.NewClaims(tUser.ID.Hex(), tUser.Roles, time.Now(), time.Hour)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
@@ -365,7 +365,7 @@ func TestUserHTTP(t *testing.T) {
 		{
 			description: "Token success",
 			mockCalls: func(muc *mock.MockUserUsecase) {
-				uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(&claims, nil)
+				uc.EXPECT().Authenticate(gomock.Any(), gomock.Any(), tUser.Email, password).Return(claims, nil)
 			},
 			auth: true,
 			checkResponse: func(rec *httptest.ResponseRecorder) {
