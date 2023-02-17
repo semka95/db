@@ -3,6 +3,7 @@ package tests
 import (
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/semka95/shortener/backend/domain"
@@ -54,6 +55,20 @@ func NewCreateUser() domain.CreateUser {
 	}
 }
 
+// NewUserBsonD creates instance of User model in bson format
+func NewUserBsonD() bson.D {
+	id, _ := primitive.ObjectIDFromHex("507f191e810c19729de860ea")
+	return bson.D{
+		{Key: "_id", Value: id},
+		{Key: "full_name", Value: "John Doe"},
+		{Key: "email", Value: "test@example.com"},
+		{Key: "hashed_password", Value: "$2a$10$2iPnt444yuUBu8tSCm0iXOaGO2YYyTLVzGKr9LudAj7s.9m9iv7PS"},
+		{Key: "roles", Value: []string{auth.RoleUser}},
+		{Key: "created_at", Value: time.Now().Truncate(time.Millisecond).UTC()},
+		{Key: "updated_at", Value: time.Now().Truncate(time.Millisecond).UTC()},
+	}
+}
+
 // NewURL creates instance of URL model
 func NewURL() *domain.URL {
 	return &domain.URL{
@@ -81,5 +96,17 @@ func NewUpdateURL() domain.UpdateURL {
 	return domain.UpdateURL{
 		ID:             "test123",
 		ExpirationDate: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC(),
+	}
+}
+
+// NewURLBsonD creates instance of User model in bson format
+func NewURLBsonD() bson.D {
+	return bson.D{
+		{Key: "_id", Value: "test123"},
+		{Key: "link", Value: "http://www.example.org"},
+		{Key: "expiration_date", Value: time.Now().Add(time.Hour).Truncate(time.Millisecond).UTC()},
+		{Key: "user_id", Value: "507f191e810c19729de860ea"},
+		{Key: "created_at", Value: time.Now().Truncate(time.Millisecond).UTC()},
+		{Key: "updated_at", Value: time.Now().Truncate(time.Millisecond).UTC()},
 	}
 }

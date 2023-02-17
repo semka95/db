@@ -1,14 +1,12 @@
 package repository_test
 
 import (
-	"log"
-	"os"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
@@ -18,101 +16,175 @@ import (
 )
 
 var tracer = sdktrace.NewTracerProvider().Tracer("")
+var noopCtx = context.Background()
 
-func TestMain(m *testing.M) {
-	if err := mtest.Setup(); err != nil {
-		log.Fatal(err)
-	}
-	defer os.Exit(m.Run())
-	if err := mtest.Teardown(); err != nil {
-		log.Fatal(err)
-	}
-}
+const tableName = "shortener.url"
 
 func TestMongoURLRepository_GetByID(t *testing.T) {
-	mt := mtest.New(t)
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	defer mt.Close()
 	tURL := tests.NewURL()
+	tURLBsonD := tests.NewURLBsonD()
 
-	mt.Run("url not exists", func(mt *mtest.T) {
+	mt.Run("not exists", func(mt *mtest.T) {
+		mt.AddMockResponses(
+			mtest.CreateCursorResponse(1, tableName, mtest.FirstBatch),
+			mtest.CreateCursorResponse(0, tableName, mtest.NextBatch),
+		)
 		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
-		result, err := r.GetByID(mtest.Background, "none")
+
+		result, err := r.GetByID(noopCtx, "none")
+
 		assert.Nil(mt, result)
 		require.Error(mt, err, domain.ErrNotFound)
 	})
 
-	mt.RunOpts("success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
+	mt.Run("success", func(mt *mtest.T) {
+		mt.AddMockResponses(
+			mtest.CreateCursorResponse(1, tableName, mtest.FirstBatch, tURLBsonD),
+			mtest.CreateCursorResponse(0, tableName, mtest.NextBatch),
+		)
 		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
-		_, err := mt.Coll.InsertOne(mtest.Background, tURL)
-		require.NoError(mt, err)
 
-		result, err := r.GetByID(mtest.Background, tURL.ID)
+		result, err := r.GetByID(noopCtx, tURL.ID)
+
 		require.NoError(mt, err)
 		assert.EqualValues(t, tURL, result)
+	})
+
+	mt.Run("server error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateWriteErrorsResponse(mtest.WriteError{
+			Index:   1,
+			Code:    123,
+			Message: "server error",
+		}))
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
+
+		result, err := r.GetByID(noopCtx, tURL.ID)
+
+		assert.Nil(mt, result)
+		assert.ErrorIs(mt, err, domain.ErrInternalServerError)
 	})
 }
 
 func TestMongoURLRepository_Store(t *testing.T) {
-	mt := mtest.New(t)
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	defer mt.Close()
 	tURL := tests.NewURL()
 
-	mt.RunOpts("success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
+	mt.Run("success", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateSuccessResponse())
 		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
-		err := r.Store(mtest.Background, tURL)
-		require.NoError(mt, err)
 
-		result := &domain.URL{}
-		err = mt.Coll.FindOne(mtest.Background, bson.D{primitive.E{Key: "_id", Value: tURL.ID}}).Decode(result)
+		err := r.Store(noopCtx, tURL)
+
 		require.NoError(mt, err)
-		assert.EqualValues(t, tURL, result)
+	})
+
+	mt.Run("server error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateWriteErrorsResponse(mtest.WriteError{
+			Index:   1,
+			Code:    123,
+			Message: "server error",
+		}))
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
+
+		err := r.Store(noopCtx, tURL)
+
+		assert.ErrorIs(mt, err, domain.ErrInternalServerError)
 	})
 }
 
 func TestMongoURLRepository_Delete(t *testing.T) {
-	mt := mtest.New(t)
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	defer mt.Close()
 	tURL := tests.NewURL()
 
-	mt.RunOpts("url not found", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
+	mt.Run("not found", func(mt *mtest.T) {
+		mt.AddMockResponses(
+			bson.D{
+				{Key: "ok", Value: 1},
+				{Key: "acknowledged", Value: true},
+				{Key: "n", Value: 0},
+			},
+		)
 		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
-		err := r.Delete(mtest.Background, "none")
+
+		err := r.Delete(noopCtx, "none")
+
 		require.Error(mt, err, domain.ErrNoAffected)
 	})
 
-	mt.RunOpts("success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
-		_, err := mt.Coll.InsertOne(mtest.Background, tURL)
-		require.NoError(mt, err)
+	mt.Run("success", func(mt *mtest.T) {
+		mt.AddMockResponses(
+			bson.D{
+				{Key: "ok", Value: 1},
+				{Key: "acknowledged", Value: true},
+				{Key: "n", Value: 1},
+			},
+		)
 		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
 
-		err = r.Delete(mtest.Background, tURL.ID)
+		err := r.Delete(noopCtx, tURL.ID)
+
 		require.NoError(mt, err)
+	})
+
+	mt.Run("server error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateWriteErrorsResponse(mtest.WriteError{
+			Index:   1,
+			Code:    123,
+			Message: "server error",
+		}))
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
+
+		err := r.Delete(noopCtx, tURL.ID)
+
+		assert.ErrorIs(mt, err, domain.ErrInternalServerError)
 	})
 }
 
 func TestMongoURLRepository_Update(t *testing.T) {
-	mt := mtest.New(t)
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	defer mt.Close()
 	tURL := tests.NewURL()
+	tURLBsonD := tests.NewURLBsonD()
 
-	mt.RunOpts("url not exists", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
+	mt.Run("not exists", func(mt *mtest.T) {
+		mt.AddMockResponses(bson.D{
+			{Key: "ok", Value: 1},
+			{Key: "nModified", Value: 0},
+		})
 		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
-		err := r.Update(mtest.Background, tURL)
+
+		err := r.Update(noopCtx, tURL)
+
 		require.Error(mt, err, domain.ErrNoAffected)
 	})
 
-	mt.RunOpts("success", mtest.NewOptions().CollectionName("url"), func(mt *mtest.T) {
-		_, err := mt.Coll.InsertOne(mtest.Background, tURL)
-		require.NoError(mt, err)
+	mt.Run("success", func(mt *mtest.T) {
+		mt.AddMockResponses(bson.D{
+			{Key: "ok", Value: 1},
+			{Key: "value", Value: tURLBsonD},
+			{Key: "nModified", Value: 1},
+		})
 		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
 
-		tURL.Link = "https://www.google.com"
-		err = r.Update(mtest.Background, tURL)
-		require.NoError(mt, err)
+		err := r.Update(noopCtx, tURL)
 
-		result := &domain.URL{}
-		err = mt.Coll.FindOne(mtest.Background, bson.D{primitive.E{Key: "_id", Value: tURL.ID}}).Decode(result)
 		require.NoError(mt, err)
-		assert.EqualValues(t, tURL, result)
+	})
+
+	mt.Run("server error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateWriteErrorsResponse(mtest.WriteError{
+			Index:   1,
+			Code:    123,
+			Message: "server error",
+		}))
+		r := repository.NewMongoURLRepository(mt.Client, mt.DB.Name(), nil, tracer)
+
+		err := r.Update(noopCtx, tURL)
+
+		assert.ErrorIs(mt, err, domain.ErrInternalServerError)
 	})
 }
