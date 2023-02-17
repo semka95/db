@@ -16,12 +16,11 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 	"go.opentelemetry.io/otel"
+
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/metric/global"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
@@ -105,7 +104,7 @@ func run(logger *zap.Logger) error {
 
 	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSampler(sdktrace.AlwaysSample()), // dev env only
 		sdktrace.WithResource(res),
 		sdktrace.WithSpanProcessor(bsp),
 	)
@@ -126,24 +125,19 @@ func run(logger *zap.Logger) error {
 		otlpmetricgrpc.WithEndpoint(cfg.Server.OtlpAddress),
 		otlpmetricgrpc.WithDialOption(grpc.WithBlock()),
 	)
-
-	pusher := controller.New(
-		processor.NewFactory(
-			simple.NewWithHistogramDistribution(),
-			metricExporter,
-		),
-		controller.WithExporter(metricExporter),
-		controller.WithCollectPeriod(2*time.Second),
-		controller.WithResource(res),
-	)
-	global.SetMeterProvider(pusher)
-
-	if err := pusher.Start(ctx); err != nil {
-		return fmt.Errorf("can't start metric's pusher: %w", err)
+	if err != nil {
+		return err
 	}
+
+	meterProvider := metric.NewMeterProvider(
+		metric.WithReader(metric.NewPeriodicReader(metricExporter, metric.WithInterval(10*time.Second))),
+		metric.WithResource(res),
+	)
+	global.SetMeterProvider(meterProvider)
+
 	defer func() {
-		if err := pusher.Stop(ctx); err != nil {
-			logger.Error("shutdown pusher", zap.Error(err))
+		if err := meterProvider.Shutdown(ctx); err != nil {
+			logger.Error("shutdown meter provider", zap.Error(err))
 		}
 		if err := metricExporter.Shutdown(ctx); err != nil {
 			logger.Error("shutdown metric exporter", zap.Error(err))
@@ -160,9 +154,9 @@ func run(logger *zap.Logger) error {
 	e.Use(middL.Logger)
 	e.Use(middleware.RecoverWithConfig(middleware.DefaultRecoverConfig))
 	e.Use(otelecho.Middleware("shortener", otelecho.WithTracerProvider(tp)))
-	e.Use(metrics.Middleware(metrics.WithMeterProvider(pusher)))
+	e.Use(metrics.Middleware(metrics.WithMeterProvider(meterProvider)))
 
-	// Start database
+	// Create database connection
 	client, err := store.Open(ctx, cfg.MongoConfig, logger)
 	if err != nil {
 		return err

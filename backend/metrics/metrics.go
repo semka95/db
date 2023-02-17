@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/unit"
 )
 
@@ -29,21 +30,21 @@ func WithMeterProvider(provider metric.MeterProvider) Option {
 	}
 }
 
-var reqCnt = []metric.InstrumentOption{
-	metric.WithDescription("How many HTTP requests processed, partitioned by status code and HTTP method."),
-	metric.WithUnit(unit.Dimensionless),
+var reqCnt = []instrument.Int64Option{
+	instrument.WithDescription("How many HTTP requests processed, partitioned by status code and HTTP method."),
+	instrument.WithUnit(unit.Dimensionless),
 }
-var reqDur = []metric.InstrumentOption{
-	metric.WithDescription("The HTTP request latencies in milliseconds."),
-	metric.WithUnit(unit.Milliseconds),
+var reqDur = []instrument.Float64Option{
+	instrument.WithDescription("The HTTP request latencies in milliseconds."),
+	instrument.WithUnit(unit.Milliseconds),
 }
-var resSz = []metric.InstrumentOption{
-	metric.WithDescription("The HTTP response sizes in bytes."),
-	metric.WithUnit(unit.Bytes),
+var resSz = []instrument.Int64Option{
+	instrument.WithDescription("The HTTP response sizes in bytes."),
+	instrument.WithUnit(unit.Bytes),
 }
-var reqSz = []metric.InstrumentOption{
-	metric.WithDescription("The HTTP request sizes in bytes."),
-	metric.WithUnit(unit.Bytes),
+var reqSz = []instrument.Int64Option{
+	instrument.WithDescription("The HTTP request sizes in bytes."),
+	instrument.WithUnit(unit.Bytes),
 }
 
 var codeLabel = attribute.Key("code")
@@ -58,7 +59,7 @@ func Middleware(opts ...Option) echo.MiddlewareFunc {
 		opt(&cfg)
 	}
 	if cfg.MeterProvider == nil {
-		cfg.MeterProvider = global.GetMeterProvider()
+		cfg.MeterProvider = global.MeterProvider()
 	}
 
 	meter := cfg.MeterProvider.Meter(
@@ -68,19 +69,19 @@ func Middleware(opts ...Option) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			rc, err := meter.NewInt64Counter("requests_total", reqCnt...)
+			rc, err := meter.Int64Counter("requests_total", reqCnt...)
 			if err != nil {
 				return next(c)
 			}
-			rd, err := meter.NewFloat64Histogram("request_duration_milliseconds", reqDur...)
+			rd, err := meter.Float64Histogram("request_duration_milliseconds", reqDur...)
 			if err != nil {
 				return next(c)
 			}
-			rs, err := meter.NewInt64Histogram("response_size_bytes", resSz...)
+			rs, err := meter.Int64Histogram("response_size_bytes", resSz...)
 			if err != nil {
 				return next(c)
 			}
-			rq, err := meter.NewInt64Histogram("request_size_bytes", reqSz...)
+			rq, err := meter.Int64Histogram("request_size_bytes", reqSz...)
 			if err != nil {
 				return next(c)
 			}
@@ -100,14 +101,11 @@ func Middleware(opts ...Option) echo.MiddlewareFunc {
 			resSz := c.Response().Size
 
 			lbl := []attribute.KeyValue{codeLabel.Int(status), methodLabel.String(c.Request().Method), hostLabel.String(c.Request().Host), urlLabel.String(url)}
-			meter.RecordBatch(
-				ctx,
-				lbl,
-				rc.Measurement(1),
-				rd.Measurement(elapsed),
-				rs.Measurement(resSz),
-				rq.Measurement(reqSz),
-			)
+
+			rc.Add(ctx, 1, lbl...)
+			rd.Record(ctx, elapsed, lbl...)
+			rs.Record(ctx, resSz, lbl...)
+			rq.Record(ctx, reqSz, lbl...)
 
 			return nil
 		}
