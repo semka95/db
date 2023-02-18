@@ -210,7 +210,7 @@ func (uh *URLHandler) StoreUserURL(c echo.Context) error {
 	u.UserID = user.Subject
 
 	span.SetAttributes(
-		attribute.String("userid", user.Id),
+		attribute.String("userid", user.ID),
 	)
 
 	return uh.storeURL(ctx, c, u)
@@ -287,7 +287,7 @@ func (uh *URLHandler) Delete(c echo.Context) error {
 	}
 
 	span.SetAttributes(
-		attribute.String("userid", user.Id),
+		attribute.String("userid", user.ID),
 		attribute.String("urlid", id),
 	)
 
@@ -336,7 +336,7 @@ func (uh *URLHandler) Update(c echo.Context) error {
 	}
 
 	span.SetAttributes(
-		attribute.String("userid", user.Id),
+		attribute.String("userid", user.ID),
 		attribute.String("urlid", u.ID),
 	)
 

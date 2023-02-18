@@ -16,17 +16,17 @@ const (
 // Claims represents the authorization claims transmitted via a JWT
 type Claims struct {
 	Roles []string `json:"roles"`
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
 // NewClaims constructs a Claims value for the identified user
 func NewClaims(subject string, roles []string, now time.Time, expires time.Duration) *Claims {
 	c := &Claims{
 		Roles: roles,
-		StandardClaims: jwt.StandardClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   subject,
-			IssuedAt:  now.Unix(),
-			ExpiresAt: now.Add(expires).Unix(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(expires)),
 		},
 	}
 

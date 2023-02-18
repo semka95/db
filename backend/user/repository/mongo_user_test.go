@@ -20,6 +20,7 @@ var noopCtx = context.Background()
 
 const tableName = "shortener.user"
 
+//nolint:dupl // test getbyid and getbyemail separately
 func TestMongoUserRepository_GetByID(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	defer mt.Close()
@@ -189,6 +190,7 @@ func TestMongoUserRepository_Update(t *testing.T) {
 	})
 }
 
+//nolint:dupl // test getbyid and getbyemail separately
 func TestMongoUserRepository_GetByEmail(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	defer mt.Close()

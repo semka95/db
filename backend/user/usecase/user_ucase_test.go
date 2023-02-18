@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -236,6 +237,6 @@ func TestUserUsecase_Authenticate(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, result.Roles[0], auth.RoleUser)
 		assert.Equal(t, result.Subject, tUser.ID.Hex())
-		assert.Equal(t, result.IssuedAt, now.Unix())
+		assert.Equal(t, result.IssuedAt, jwt.NewNumericDate(now))
 	})
 }
