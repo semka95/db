@@ -44,4 +44,8 @@ migrate:
 seed: migrate
 	go run ./cmd/admin/main.go seed
 
-.PHONY: test engine unittest test-coverage clean docker run stop lint-prepare lint generate-mocks authkey migrate seed
+rebuild:
+	docker compose stop backend
+	docker-compose up --build --force-recreate --no-deps -d backend
+
+.PHONY: test engine unittest test-coverage clean docker run stop lint-prepare lint generate-mocks authkey migrate seed rebuild
