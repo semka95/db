@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -81,8 +81,11 @@ func (m *GoMiddleware) Logger(next echo.HandlerFunc) echo.HandlerFunc {
 func (m *GoMiddleware) HasRole(roles ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			user := c.Get("user").(*jwt.Token)
-			claims, ok := user.Claims.(*auth.Claims)
+			token, ok := c.Get("user").(*jwt.Token)
+			if !ok {
+				return echo.NewHTTPError(http.StatusBadRequest, "JWT token missing or invalid")
+			}
+			claims, ok := token.Claims.(*auth.Claims)
 			if !ok {
 				return echo.NewHTTPError(http.StatusInternalServerError, "can't convert jwt.Claims to auth.Claims")
 			}

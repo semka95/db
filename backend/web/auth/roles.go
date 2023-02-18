@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // RoleAdmin represents admin role
@@ -15,7 +15,7 @@ const (
 
 // Claims represents the authorization claims transmitted via a JWT
 type Claims struct {
-	Roles []string
+	Roles []string `json:"roles"`
 	jwt.StandardClaims
 }
 

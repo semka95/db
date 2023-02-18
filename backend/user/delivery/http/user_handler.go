@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -44,10 +44,10 @@ func NewUserHandler(us domain.UserUsecase, authenticator *auth.Authenticator, v 
 func (uh *UserHandler) RegisterRoutes(e *echo.Echo) {
 	myMiddl := _MyMiddleware.InitMiddleware(uh.logger)
 	e.POST("/v1/user/create", uh.Create)
-	e.GET("/v1/user/:id", uh.GetByID, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
+	e.GET("/v1/user/:id", uh.GetByID, echojwt.WithConfig(uh.authenticator.JWTConfig))
 	e.GET("v1/user/token", uh.Token)
-	e.DELETE("/v1/user/:id", uh.Delete, middleware.JWTWithConfig(uh.authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
-	e.PUT("/v1/user", uh.Update, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
+	e.DELETE("/v1/user/:id", uh.Delete, echojwt.WithConfig(uh.authenticator.JWTConfig), myMiddl.HasRole(auth.RoleAdmin))
+	e.PUT("/v1/user", uh.Update, echojwt.WithConfig(uh.authenticator.JWTConfig))
 }
 
 // GetByID will get user by given id

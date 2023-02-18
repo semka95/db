@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang-jwt/jwt"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/golang-jwt/jwt/v4"
+	echojwt "github.com/labstack/echo-jwt/v4"
+	"github.com/labstack/echo/v4"
 )
 
 // KeyLookupFunc is used to map a JWT key id (kid) to the corresponding public key.
@@ -37,7 +38,7 @@ func NewSimpleKeyLookupFunc(activeKID string, publicKey *rsa.PublicKey) KeyLooku
 // Authenticator is used to authenticate clients. It can generate a token for a
 // set of user claims and recreate the claims by parsing the token.
 type Authenticator struct {
-	JWTConfig        middleware.JWTConfig
+	JWTConfig        echojwt.Config
 	privateKey       *rsa.PrivateKey
 	activeKID        string
 	algorithm        string
@@ -71,10 +72,12 @@ func NewAuthenticator(privateKey *rsa.PrivateKey, activeKID, algorithm string, p
 		ValidMethods: []string{algorithm},
 	}
 
-	jwtConfig := middleware.JWTConfig{
-		Claims:        &Claims{},
-		SigningKey:    privateKey.Public().(*rsa.PublicKey),
+	jwtConfig := echojwt.Config{
 		SigningMethod: algorithm,
+		SigningKey:    privateKey.Public().(*rsa.PublicKey),
+		NewClaimsFunc: func(c echo.Context) jwt.Claims {
+			return new(Claims)
+		},
 	}
 
 	a := Authenticator{

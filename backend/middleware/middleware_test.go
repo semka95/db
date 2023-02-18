@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -161,7 +161,7 @@ func TestJWT(t *testing.T) {
 		{
 			"auth token not provided",
 			"",
-			http.StatusBadRequest,
+			http.StatusUnauthorized,
 			"missing or malformed jwt",
 			false,
 		},
@@ -174,7 +174,7 @@ func TestJWT(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer "+test.Token)
 			res := httptest.NewRecorder()
 			c := e.NewContext(req, res)
-			m := middleware.JWTWithConfig(authenticator.JWTConfig)
+			m := echojwt.WithConfig(authenticator.JWTConfig)
 
 			h := m(func(c echo.Context) error {
 				return c.NoContent(http.StatusOK)

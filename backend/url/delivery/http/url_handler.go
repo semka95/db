@@ -8,9 +8,9 @@ import (
 
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -51,11 +51,12 @@ func NewURLHandler(us domain.URLUsecase, authenticator *auth.Authenticator, v *w
 // RegisterRoutes registers routes for a path with matching handler
 func (uh *URLHandler) RegisterRoutes(e *echo.Echo) {
 	e.POST("/v1/url/create", uh.Store)
-	e.POST("/v1/user/url/create", uh.StoreUserURL, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
+	e.POST("/v1/user/url/create", uh.StoreUserURL, echojwt.WithConfig(uh.authenticator.JWTConfig))
 	e.GET("/:id", uh.Redirect)
 	e.GET("/v1/url/:id", uh.GetByID)
-	e.DELETE("/v1/url/:id", uh.Delete, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
-	e.PUT("/v1/url", uh.Update, middleware.JWTWithConfig(uh.authenticator.JWTConfig))
+	e.DELETE("/v1/url/:id", uh.Delete, echojwt.WithConfig(uh.authenticator.JWTConfig))
+	e.PUT("/v1/url", uh.Update, echojwt.WithConfig(uh.authenticator.JWTConfig))
+
 }
 
 // RegisterValidation will initialize validation for url handler
